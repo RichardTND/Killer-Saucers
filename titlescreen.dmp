@@ -1,0 +1,2705 @@
+00001  0000             ;**********************************
+00002  0001             ;*                                *
+00003  0001             ;*         KILLER SAUCERS         *
+00004  0001             ;*                                *
+00005  0001             ;* BY RICHARD BAYLISS (C)2020 TND *
+00006  0001             ;*                                *
+00007  0001             ;**********************************
+00008  0001             ;
+00009  0001             ;NOTE: TITLE SCREEN AS SEPARATE CODE
+00010  0001             
+00011  0001             ;---- VARIABLES ---
+00012  0001             
+00013  0001             SCN        = $0400 ;HW SCREEN RAM
+00014  0001             COL        = $D800 ;HW COLOUR RAM
+00015  0001             DAT        = $3000 ;SCREEN DATA
+00016  0001             DAT2       = $3400 ;COLOUR DATA
+00017  0001             SFXINIT    = $1000 ;INIT SFX
+00018  0001             SFXPLAY    = $1003 ;PLAY SFX
+00019  0001             SCOREPOS   = $0407 ;HW SCREEN POS FOR SCORE
+00020  0001             HISCOREPOS = $0422
+00021  0001             GOPOS      = $04D6 ;GAME OVER TEXT SCREEN
+00022  0001             GOCOL      = $D8D6 ;GAME OVER TEXT COLOUR
+00023  0001             LCPOS      = $04D5
+00024  0001             LCCOL      = $D8D5
+00025  0001             MISSILEPOS = $07D4
+00026  0001             LIVESPOS   = $0415 ;LIVES POSITION TEXT
+00027  0001             LEVPOS     = $041C
+00028  0001             BOMBRANGELEFT = $0C
+00029  0001             BOMBRANGERIGHT = $A4
+00030  0001             BOMBRANGETOP = $36
+00031  0001             BOMBRANGEBOTTOM = $FA
+00032  0001             MAXSHOTS   = 50
+00033  0001             STARCHAR   = $3FE0
+00034  0001             LAZERLEFT  = $3B60
+00035  0001             LAZERRIGHT = $3B68
+00036  0001             MUSICINIT  = $9000
+00037  0001             MUSICPLAY  = $9006
+00038  0001             
+00039  0001             ;BASIC SYS: 2061
+00040  0001             ; 10 SYS2061
+00041  0001             
+00042  0001             *=$0801
+00043  0801             
+00044  0801  0B 08 0A              BYTE    $0B, $08, $0A, $00, $9E, $32, $30, $36, $31, $00, $00, $00
+00045  080D             
+00046  080D                        * = $080D
+00047  080D  AD A6 02              LDA $02A6
+00048  0810  8D 93 AD              STA SYSTEM
+00049  0813  A9 FC                 LDA #252
+00050  0815  8D 28 03              STA 808
+00051  0818  78                    SEI
+00052  0819  A9 36                 LDA #$36
+00053  081B  85 01                 STA $01
+00054  081D             
+00055  081D  58                    CLI
+00056  081E  4C 00 60              JMP $6000
+00057  0821             DDDDD
+00058  0821             ;IMPORT SOUND EFFECTS
+00059  0821                        * = $1000
+00060  1000                        INCBIN "BIN\GAMESFX.PRG",2,0
+00061  1400             
+00062  1400             ;IMPORT GAME SPRITES
+00063  1400                        * = $2000
+00064  2000                        INCBIN "BIN\GAMESPRITES.BIN"
+00065  2780             ;IMPORT GAME SCREEN
+00066  2780                        * = $3000
+00067  3000                        INCBIN "BIN\GAMESCREEN.BIN"
+00068  33E8             ;IMPORT GAME COLOUR ATTRIBUTES
+00069  33E8                        * = $3400
+00070  3400                        INCBIN "BIN\GAMECOLOURS.BIN"
+00071  3500             ;IMPORT CHARSET DATA
+00072  3500                        * = $3800
+00073  3800                        INCBIN "BIN\GAMECHARS.BIN"
+00074  3FF8             ;GAME CODE
+00075  3FF8             ;        * = $4000
+00076  3FF8             ;        INCASM "GAMECODE.ASM"
+00077  3FF8             
+00078  3FF8             ;TITLE SCREEN CODE
+00079  3FF8             ;        * = $6000
+00080  3FF8             ;        INCASM "TITLESCREEN.ASM"
+00081  3FF8             
+00082  3FF8                        
+00083  3FF8             
+00084  3FF8                        *=$9000
+00085  9000                        INCBIN "BIN\MUSIC.PRG",2,0
+00086  9B8B             TGT_C64
+00087  9B8B             
+00088  9B8B             
+00089  9B8B             ;GAME CODE:
+00090  9B8B             
+00091  9B8B                        
+00092  9B8B             ;SWITCH OFF IRQ AND SETUP GAME
+00093  9B8B             ;SCREEN.
+00094  9B8B             
+00095  9B8B  78                    SEI
+00096  9B8C  A2 31                 LDX #$31
+00097  9B8E  A0 EA                 LDY #$EA
+00098  9B90  A9 81                 LDA #$81
+00099  9B92  8D 0D DC              STA $DC0D
+00100  9B95  8D 0D DD              STA $DD0D
+00101  9B98  8E 14 03              STX $0314
+00102  9B9B  8C 15 03              STY $0315
+00103  9B9E  A9 00                 LDA #$00
+00104  9BA0  8D 19 D0              STA $D019
+00105  9BA3  8D 1A D0              STA $D01A
+00106  9BA6  A2 00                 LDX #$00
+00107  9BA8  A9 00      NOSOUNDG   LDA #$00
+00108  9BAA  9D 00 D4              STA $D400,X
+00109  9BAD  E8                    INX
+00110  9BAE  E0 18                 CPX #$18
+00111  9BB0  D0 F6                 BNE NOSOUNDG
+00112  9BB2             ;PREPARE HARDWARE PROPERTIES
+00113  9BB2             
+00114  9BB2  A9 1E                 LDA #$1E   ;CHAR @ $3800
+00115  9BB4  8D 18 D0              STA $D018
+00116  9BB7  A9 18                 LDA #$18   ;SCREEN H MODE
+00117  9BB9  8D 16 D0              STA $D016
+00118  9BBC  A9 0B                 LDA #$0B
+00119  9BBE  8D 22 D0              STA $D022
+00120  9BC1  A9 01                 LDA #$01
+00121  9BC3  8D 23 D0              STA $D023
+00122  9BC6  A9 05                 LDA #$05   ;BORDER COLOUR
+00123  9BC8  BD 00 30   MKDAT      LDA DAT,X ;FIRST SEGMENT 2
+00124  9BCB  A9 00                 LDA #$00   ;SCREEN COLOUR
+00125  9BCD  8D 21 D0              STA $D021
+00126  9BD0  A9 00                 LDA #$00   ;NO SPRITES YET
+00127  9BD2  8D 15 D0              STA $D015
+00128  9BD5  A9 00                 LDA #$00
+00129  9BD7  8D 20 D0              STA $D020
+00130  9BDA                        
+00131  9BDA  A9 0B                 LDA #$0B
+00132  9BDC  8D 25 D0              STA $D025
+00133  9BDF  A9 01                 LDA #$01
+00134  9BE1  8D 26 D0              STA $D026
+00135  9BE4  A9 FF                 LDA #$FF
+00136  9BE6  8D 1C D0              STA $D01C
+00137  9BE9  A9 00                 LDA #$00
+00138  9BEB  8D 1B D0              STA $D01B
+00139  9BEE  8D 17 D0              STA $D017
+00140  9BF1  A9 01                 LDA #$01
+00141  9BF3  8D FB A7              STA LEVELCOUNTER
+00142  9BF6  A9 33                 LDA #$33
+00143  9BF8  8D C2 A7              STA LIVES
+00144  9BFB             
+00145  9BFB  A9 39                 LDA #$39
+00146  9BFD  8D FD A7              STA MISSILECOUNTER
+00147  9C00  8D FE A7              STA MISSILECOUNTER+1
+00148  9C03                        
+00149  9C03  A2 00                 LDX #0
+00150  9C05             COPYSTARTSPEED 
+00151  9C05  BD 22 A8              LDA STARTSPEED,X
+00152  9C08  9D D2 A7              STA ENEMY1SPEED,X
+00153  9C0B  9D DC A7              STA ENEMY1SPEEDBACKUP,X
+00154  9C0E  E8                    INX
+00155  9C0F  E0 0A                 CPX #$0A
+00156  9C11  D0 F2                 BNE COPYSTARTSPEED
+00157  9C13             
+00158  9C13             ;ZERO THE PLAYER SCORE
+00159  9C13             
+00160  9C13  A2 05                 LDX #$05
+00161  9C15  A9 30      ZEROSCOR   LDA #$30
+00162  9C17  9D 07 A9              STA SCORE,X
+00163  9C1A  BD 0D A9              LDA HISCORE,X
+00164  9C1D  9D 22 04              STA HISCOREPOS,X
+00165  9C20  CA                    DEX
+00166  9C21  10 F2                 BPL ZEROSCOR
+00167  9C23                        
+00168  9C23                        
+00169  9C23             ;PREPARE AND SETUP IRQ RASTER
+00170  9C23             ;INTERRUPTS
+00171  9C23                        
+00172  9C23  A2 73                 LDX #<IRQ
+00173  9C25  A0 9D                 LDY #>IRQ
+00174  9C27  A9 36                 LDA #$36
+00175  9C29  8D 12 D0              STA $D012
+00176  9C2C  8E 14 03              STX $0314
+00177  9C2F  8C 15 03              STY $0315
+00178  9C32  A9 7F                 LDA #$7F
+00179  9C34  8D 0D DC              STA $DC0D
+00180  9C37  A9 1B                 LDA #$1B
+00181  9C39  8D 11 D0              STA $D011
+00182  9C3C  A9 01                 LDA #$01
+00183  9C3E  8D 1A D0              STA $D01A
+00184  9C41  A9 00                 LDA #$00
+00185  9C43  20 00 10              JSR SFXINIT
+00186  9C46  A9 32                 LDA #MAXSHOTS
+00187  9C48  8D FA A7              STA SHOTCOUNT
+00188  9C4B                        
+00189  9C4B  58                    CLI
+00190  9C4C             NEXTLEVEL
+00191  9C4C  AE FC A7              LDX LEVELPOINTER
+00192  9C4F  BD B2 AA              LDA LEVELSPEEDTABLELOW,X
+00193  9C52  8D 7C 9C              STA SETUPLEVELSPEEDTABLE+1
+00194  9C55  BD BA AA              LDA LEVELSPEEDTABLEHI,X
+00195  9C58  8D 7D 9C              STA SETUPLEVELSPEEDTABLE+2
+00196  9C5B  BD C2 AA              LDA FIREINTENSITY,X
+00197  9C5E  8D EF A7              STA ENEMYBULLETDELAYAMOUNT
+00198  9C61  BD CA AA              LDA FIRESPEEDTABLE,X
+00199  9C64  8D 01 A8              STA ALIENBULLETSPEED
+00200  9C67  E8                    INX
+00201  9C68  E0 08                 CPX #8
+00202  9C6A  F0 08                 BEQ GAMERESTART
+00203  9C6C  A9 32                 LDA #MAXSHOTS
+00204  9C6E  8D FA A7              STA SHOTCOUNT
+00205  9C71  4C 79 9C              JMP SETUPNEWLEVEL
+00206  9C74             GAMERESTART 
+00207  9C74  A2 00                 LDX #0
+00208  9C76  8E FC A7              STX LEVELPOINTER
+00209  9C79                        
+00210  9C79             SETUPNEWLEVEL 
+00211  9C79  A2 00                 LDX #$00
+00212  9C7B             SETUPLEVELSPEEDTABLE 
+00213  9C7B  BD FF FF              LDA $FFFF,X
+00214  9C7E  9D 9F A8              STA LEVELSPEEDINSTR,X
+00215  9C81  E8                    INX
+00216  9C82  E0 31                 CPX #LEVEL1SPEEDTABLEEND-LEVEL1SPEEDTABLE
+00217  9C84  D0 F5                 BNE SETUPLEVELSPEEDTABLE
+00218  9C86             
+00219  9C86                        ;PREPARE AND DRAW MAIN GAME SCREEN
+00220  9C86             
+00221  9C86  A2 00                 LDX #$00
+00222  9C88  BC 00 30   DRAWSCR    LDY DAT,X
+00223  9C8B  B9 00 34              LDA DAT2,Y
+00224  9C8E  9D 00 D8              STA $D800,X
+00225  9C91  BC 00 31              LDY DAT+$100,X
+00226  9C94  B9 00 34              LDA DAT2,Y
+00227  9C97  9D 00 D9              STA $D900,X
+00228  9C9A  BC 00 32              LDY DAT+$200,X
+00229  9C9D  B9 00 34              LDA DAT2,Y
+00230  9CA0  9D 00 DA              STA $DA00,X
+00231  9CA3  BC E8 32              LDY DAT+$2E8,X
+00232  9CA6  B9 00 34              LDA DAT2,Y
+00233  9CA9  9D E8 DA              STA $DAE8,X
+00234  9CAC  BD 00 30              LDA DAT,X
+00235  9CAF  9D 00 04              STA $0400,X
+00236  9CB2  BD 00 31              LDA DAT+$100,X
+00237  9CB5  9D 00 05              STA $0500,X
+00238  9CB8  BD 00 32              LDA DAT+$200,X
+00239  9CBB  9D 00 06              STA $0600,X
+00240  9CBE  BD E8 32              LDA DAT+$2E8,X
+00241  9CC1  9D E8 06              STA $06E8,X
+00242  9CC4  E8                    INX
+00243  9CC5  D0 C1                 BNE DRAWSCR
+00244  9CC7             
+00245  9CC7  A2 00                 LDX #$00
+00246  9CC9             RESTORESCOREPANEL 
+00247  9CC9  BD 07 A9              LDA SCORE,X
+00248  9CCC  9D 07 04              STA SCOREPOS,X
+00249  9CCF  BD 0D A9              LDA HISCORE,X
+00250  9CD2  9D 22 04              STA HISCOREPOS,X
+00251  9CD5  E8                    INX
+00252  9CD6  E0 06                 CPX #6
+00253  9CD8  D0 EF                 BNE RESTORESCOREPANEL
+00254  9CDA                        
+00255  9CDA             
+00256  9CDA  A9 00                 LDA #$00
+00257  9CDC  20 00 10              JSR SFXINIT
+00258  9CDF  AD FB A7              LDA LEVELCOUNTER
+00259  9CE2  18                    CLC
+00260  9CE3  69 30                 ADC #$30
+00261  9CE5  8D 1C 04              STA LEVPOS
+00262  9CE8  AD C2 A7              LDA LIVES
+00263  9CEB  8D 15 04              STA LIVESPOS
+00264  9CEE  A9 39                 LDA #$39
+00265  9CF0  8D FD A7              STA MISSILECOUNTER
+00266  9CF3  8D FE A7              STA MISSILECOUNTER+1
+00267  9CF6  AD FD A7              LDA MISSILECOUNTER
+00268  9CF9  8D D4 07              STA MISSILEPOS
+00269  9CFC  AD FE A7              LDA MISSILECOUNTER+1
+00270  9CFF  8D D5 07              STA MISSILEPOS+1
+00271  9D02             
+00272  9D02                        ;SETUP GAME SPRITES
+00273  9D02             
+00274  9D02  A2 00                 LDX #$00
+00275  9D04  BD 12 A8   SCNCLRSP   LDA STARTPOS,X
+00276  9D07  9D 02 A8              STA OBJPOS,X
+00277  9D0A  E8                    INX
+00278  9D0B  E0 10                 CPX #$10
+00279  9D0D  D0 F5                 BNE SCNCLRSP
+00280  9D0F  AD C5 A7              LDA PLAYER
+00281  9D12  8D F8 07              STA $07F8
+00282  9D15  AD C6 A7              LDA BULLET
+00283  9D18  8D F9 07              STA $07F9
+00284  9D1B  AD C8 A7              LDA SAUCER1
+00285  9D1E  8D FA 07              STA $07FA
+00286  9D21  AD C9 A7              LDA SAUCER2
+00287  9D24  8D FB 07              STA $07FB
+00288  9D27  AD CA A7              LDA SAUCER3
+00289  9D2A  8D FC 07              STA $07FC
+00290  9D2D  AD CB A7              LDA SAUCER4
+00291  9D30  8D FD 07              STA $07FD
+00292  9D33  AD CC A7              LDA BULLET2
+00293  9D36  8D FE 07              STA $07FE
+00294  9D39  AD C8 A7              LDA SAUCER1
+00295  9D3C  8D FF 07              STA $07FF
+00296  9D3F  A9 0F                 LDA #$0F
+00297  9D41  8D 27 D0              STA $D027
+00298  9D44  A9 0A                 LDA #$0A
+00299  9D46  8D 28 D0              STA $D028
+00300  9D49  A2 00                 LDX #$00
+00301  9D4B  BD 6D A8   COLRIZE    LDA COLINSTR,X
+00302  9D4E  9D 29 D0              STA $D029,X
+00303  9D51  E8                    INX
+00304  9D52  E0 06                 CPX #6
+00305  9D54  D0 F5                 BNE COLRIZE
+00306  9D56                        
+00307  9D56             ;ZERO THE Y POSITION FOR ENEMY
+00308  9D56             ;SPEED, SO AT THE START OF THE
+00309  9D56             ;GAME THE ENEMIES MOVE X ONLY.
+00310  9D56             
+00311  9D56  A2 00                 LDX #$00
+00312  9D58  A9 00      ZEROY      LDA #$00
+00313  9D5A  9D D3 A7              STA ENEMY1SPEED+1,X
+00314  9D5D  E8                    INX
+00315  9D5E  E8                    INX
+00316  9D5F  E0 0A                 CPX #$0A
+00317  9D61  D0 F5                 BNE ZEROY
+00318  9D63  A9 00                 LDA #0
+00319  9D65  8D EA A7              STA PLAYERDEAD
+00320  9D68  8D CF A7              STA BULLETDEAD
+00321  9D6B  A9 FF                 LDA #$FF
+00322  9D6D  8D 15 D0              STA $D015
+00323  9D70             
+00324  9D70  4C 24 9E              JMP GAMELOOP
+00325  9D73             
+00326  9D73             ;MAINTAIN GAME INTERRUPT IN ACTION
+00327  9D73             
+00328  9D73  EE 19 D0   IRQ        INC $D019
+00329  9D76  AD 0D DC              LDA $DC0D
+00330  9D79  8D 0D DD              STA $DD0D
+00331  9D7C  A9 FA                 LDA #$FA
+00332  9D7E  8D 12 D0              STA $D012
+00333  9D81  20 8F 9D              JSR STARFIELD
+00334  9D84  A9 01                 LDA #$01
+00335  9D86  8D C0 A7              STA RT
+00336  9D89  20 03 10              JSR SFXPLAY
+00337  9D8C  4C 7E EA              JMP $EA7E
+00338  9D8F             
+00339  9D8F             STARFIELD
+00340  9D8F                        
+00341  9D8F  20 99 9D              JSR ANIMLAZER1
+00342  9D92  20 A6 9D              JSR ANIMLAZER2
+00343  9D95  20 B3 9D              JSR ANIMPIXEL1
+00344  9D98  60                    RTS
+00345  9D99             
+00346  9D99             
+00347  9D99             ANIMLAZER1 
+00348  9D99  A2 07                 LDX #7
+00349  9D9B  BD 60 3B   ANILOOP    LDA LAZERLEFT,X
+00350  9D9E  0A                    ASL
+00351  9D9F  3E 60 3B              ROL LAZERLEFT,X
+00352  9DA2  CA                    DEX
+00353  9DA3  10 F6                 BPL ANILOOP
+00354  9DA5  60                    RTS
+00355  9DA6             ANIMLAZER2 
+00356  9DA6  A2 07                 LDX #7
+00357  9DA8  BD 68 3B   ANILOOP2   LDA LAZERRIGHT,X
+00358  9DAB  4A                    LSR
+00359  9DAC  7E 68 3B              ROR LAZERRIGHT,X
+00360  9DAF  CA                    DEX
+00361  9DB0  10 F6                 BPL ANILOOP2
+00362  9DB2  60                    RTS
+00363  9DB3             
+00364  9DB3             ANIMPIXEL1 
+00365  9DB3  AD E1 3F              LDA $3FE1
+00366  9DB6  0A                    ASL
+00367  9DB7  2E F9 3F              ROL $3FF9
+00368  9DBA  2E F1 3F              ROL $3FF1
+00369  9DBD  2E E9 3F              ROL $3FE9
+00370  9DC0  2E E1 3F              ROL $3FE1
+00371  9DC3  AD E3 3F              LDA $3FE3
+00372  9DC6  0A                    ASL
+00373  9DC7  2E FB 3F              ROL $3FFB
+00374  9DCA  2E F3 3F              ROL $3FF3
+00375  9DCD  2E EB 3F              ROL $3FEB
+00376  9DD0  2E E3 3F              ROL $3FE3
+00377  9DD3  AD E3 3F              LDA $3FE3
+00378  9DD6  0A                    ASL
+00379  9DD7  2E FB 3F              ROL $3FFB
+00380  9DDA  2E F3 3F              ROL $3FF3
+00381  9DDD  2E EB 3F              ROL $3FEB
+00382  9DE0  2E E3 3F              ROL $3FE3
+00383  9DE3  AD E5 3F              LDA $3FE5
+00384  9DE6  0A                    ASL
+00385  9DE7  2E FD 3F              ROL $3FFD
+00386  9DEA  2E F5 3F              ROL $3FF5
+00387  9DED  2E ED 3F              ROL $3FED
+00388  9DF0  2E E5 3F              ROL $3FE5
+00389  9DF3  AD E5 3F              LDA $3FE5
+00390  9DF6  0A                    ASL
+00391  9DF7  2E FD 3F              ROL $3FFD
+00392  9DFA  2E F5 3F              ROL $3FF5
+00393  9DFD  2E ED 3F              ROL $3FED
+00394  9E00  2E E5 3F              ROL $3FE5
+00395  9E03  AD E5 3F              LDA $3FE5
+00396  9E06  0A                    ASL
+00397  9E07  2E FD 3F              ROL $3FFD
+00398  9E0A  2E F5 3F              ROL $3FF5
+00399  9E0D  2E ED 3F              ROL $3FED
+00400  9E10  2E E5 3F              ROL $3FE5
+00401  9E13  AD E7 3F              LDA $3FE7
+00402  9E16  0A                    ASL
+00403  9E17  2E FF 3F              ROL $3FFF
+00404  9E1A  2E F7 3F              ROL $3FF7
+00405  9E1D  2E EF 3F              ROL $3FEF
+00406  9E20  2E E7 3F              ROL $3FE7
+00407  9E23  60                    RTS
+00408  9E24             
+00409  9E24             
+00410  9E24             ;MAIN GAME LOOP
+00411  9E24             
+00412  9E24  A9 00      GAMELOOP   LDA #$00
+00413  9E26  8D C0 A7              STA RT
+00414  9E29  CD C0 A7              CMP RT
+00415  9E2C  F0 FB                 BEQ *-3
+00416  9E2E  20 A1 A7              JSR ROUTINES
+00417  9E31                        
+00418  9E31  4C 24 9E              JMP GAMELOOP
+00419  9E34             
+00420  9E34  A2 00      EXPAND     LDX #$00
+00421  9E36  BD 03 A8   EXLOOP     LDA OBJPOS+1,X
+00422  9E39  9D 01 D0              STA $D001,X
+00423  9E3C  BD 02 A8              LDA OBJPOS,X
+00424  9E3F  0A                    ASL A
+00425  9E40  6E 10 D0              ROR $D010
+00426  9E43  9D 00 D0              STA $D000,X
+00427  9E46  E8                    INX
+00428  9E47  E8                    INX
+00429  9E48  E0 10                 CPX #$10
+00430  9E4A  D0 EA                 BNE EXLOOP
+00431  9E4C  60                    RTS
+00432  9E4D                        ;LDA BULLETDEAD
+00433  9E4D             
+00434  9E4D             ;SETUP SPRITE ANIMATION
+00435  9E4D             
+00436  9E4D  AD C3 A7   ANIMSPR    LDA ANIMDELAY
+00437  9E50  C9 04                 CMP #$04
+00438  9E52  F0 04                 BEQ DOANIM
+00439  9E54  EE C3 A7              INC ANIMDELAY
+00440  9E57  60                    RTS
+00441  9E58  A9 00      DOANIM     LDA #$00
+00442  9E5A  8D C3 A7              STA ANIMDELAY
+00443  9E5D  AE C4 A7              LDX ANIMPOINTER
+00444  9E60  BD 35 A8              LDA BULLETFRAME1,X
+00445  9E63  8D C6 A7              STA BULLET
+00446  9E66  BD 49 A8              LDA SAUCER1FRAME,X
+00447  9E69  8D C8 A7              STA SAUCER1
+00448  9E6C  BD 4D A8              LDA SAUCER2FRAME,X
+00449  9E6F  8D C9 A7              STA SAUCER2
+00450  9E72  BD 51 A8              LDA SAUCER3FRAME,X
+00451  9E75  8D CA A7              STA SAUCER3
+00452  9E78  BD 55 A8              LDA SAUCER4FRAME,X
+00453  9E7B  8D CB A7              STA SAUCER4
+00454  9E7E  BD 59 A8              LDA BULLET2FRAME,X
+00455  9E81  8D CC A7              STA BULLET2
+00456  9E84  E8                    INX
+00457  9E85  E0 04                 CPX #4
+00458  9E87  F0 04                 BEQ ANIMEXIT
+00459  9E89  EE C4 A7              INC ANIMPOINTER
+00460  9E8C  60                    RTS
+00461  9E8D  A2 00      ANIMEXIT   LDX #$00
+00462  9E8F  8E C4 A7              STX ANIMPOINTER
+00463  9E92  60                    RTS
+00464  9E93             
+00465  9E93             ;PLAYER CONTROL
+00466  9E93             
+00467  9E93             PLAYERCONTROL ;
+00468  9E93  AD EA A7              LDA PLAYERDEAD
+00469  9E96  C9 01                 CMP #$01
+00470  9E98  F0 03                 BEQ KILLPLAYER
+00471  9E9A  4C 69 9F              JMP MOVEPLAYER
+00472  9E9D             
+00473  9E9D             ;THE PLAYER DIES ... KILL IT
+00474  9E9D             ;AND THEN RESPAWN
+00475  9E9D             
+00476  9E9D             KILLPLAYER ;
+00477  9E9D  AD E8 A7              LDA PEXPLODEDELAY
+00478  9EA0  C9 02                 CMP #$02
+00479  9EA2  F0 04                 BEQ OKAYTOBLOWUP
+00480  9EA4  EE E8 A7              INC PEXPLODEDELAY
+00481  9EA7  60                    RTS
+00482  9EA8             OKAYTOBLOWUP ;
+00483  9EA8  A9 00                 LDA #$00
+00484  9EAA  8D E8 A7              STA PEXPLODEDELAY
+00485  9EAD  AE E9 A7              LDX PEXPLODEPOINTER
+00486  9EB0  BD 39 A8              LDA PEXPLODEINSTR,X
+00487  9EB3  8D F8 07              STA $07F8
+00488  9EB6  A9 07                 LDA #$07
+00489  9EB8  8D 27 D0              STA $D027
+00490  9EBB  E8                    INX
+00491  9EBC  E0 10                 CPX #$10
+00492  9EBE  F0 04                 BEQ LOSELIVE
+00493  9EC0  EE E9 A7              INC PEXPLODEPOINTER
+00494  9EC3  60                    RTS
+00495  9EC4  CE C2 A7   LOSELIVE   DEC LIVES
+00496  9EC7  AD C2 A7              LDA LIVES
+00497  9ECA                        
+00498  9ECA  8D 15 04              STA LIVESPOS
+00499  9ECD  AD C2 A7              LDA LIVES
+00500  9ED0  C9 30                 CMP #$30
+00501  9ED2  F0 27                 BEQ GAMEOVER
+00502  9ED4  A2 00                 LDX #$00
+00503  9ED6  8E E9 A7              STX PEXPLODEPOINTER
+00504  9ED9  A9 00                 LDA #$00
+00505  9EDB  8D E8 A7              STA PEXPLODEDELAY
+00506  9EDE  8D EA A7              STA PLAYERDEAD
+00507  9EE1  A9 80                 LDA #$80
+00508  9EE3  8D F8 07              STA $07F8
+00509  9EE6  A9 0F                 LDA #$0F
+00510  9EE8  8D 27 D0              STA $D027
+00511  9EEB  AD FD A7              LDA MISSILECOUNTER
+00512  9EEE  8D D4 07              STA MISSILEPOS
+00513  9EF1  AD FE A7              LDA MISSILECOUNTER+1
+00514  9EF4  8D D5 07              STA MISSILEPOS+1
+00515  9EF7  4C 4C 9C              JMP NEXTLEVEL
+00516  9EFA  60                    RTS
+00517  9EFB             
+00518  9EFB             ;LAST LIFE LOST:
+00519  9EFB             ;GAME OVER
+00520  9EFB             
+00521  9EFB             GAMEOVER   
+00522  9EFB  A9 00                 LDA #0
+00523  9EFD  8D 15 D0              STA $D015
+00524  9F00  A2 00                 LDX #$00
+00525  9F02             COPYGOTEXT 
+00526  9F02  BD 13 A9              LDA GOTEXT,X
+00527  9F05  9D D6 04              STA GOPOS,X
+00528  9F08  A9 02                 LDA #2
+00529  9F0A  9D D6 D8              STA GOCOL,X
+00530  9F0D  E8                    INX
+00531  9F0E  E0 09                 CPX #GOTEXTEND-GOTEXT
+00532  9F10  D0 F0                 BNE COPYGOTEXT
+00533  9F12                        
+00534  9F12  A9 05                 LDA #5
+00535  9F14  20 00 10              JSR SFXINIT
+00536  9F17             
+00537  9F17             ;CHECK IF THE PLAYER HAS
+00538  9F17             ;A NEW HI SCORE THEN IF
+00539  9F17             ;SO, MAKE THE PLAYER
+00540  9F17             ;SCORE A NEW HI SCORE
+00541  9F17             
+00542  9F17  AD 07 A9              LDA SCORE
+00543  9F1A  38                    SEC
+00544  9F1B  AD 12 A9              LDA HISCORE+5
+00545  9F1E  ED 0C A9              SBC SCORE+5
+00546  9F21  AD 11 A9              LDA HISCORE+4
+00547  9F24  ED 0B A9              SBC SCORE+4
+00548  9F27  AD 10 A9              LDA HISCORE+3
+00549  9F2A  ED 0A A9              SBC SCORE+3
+00550  9F2D  AD 0F A9              LDA HISCORE+2
+00551  9F30  ED 09 A9              SBC SCORE+2
+00552  9F33  AD 0E A9              LDA HISCORE+1
+00553  9F36  ED 08 A9              SBC SCORE+1
+00554  9F39  AD 0D A9              LDA HISCORE
+00555  9F3C  ED 07 A9              SBC SCORE
+00556  9F3F  10 0E                 BPL NOHISCORE
+00557  9F41             
+00558  9F41  A2 05                 LDX #$05
+00559  9F43             MAKENEWHI
+00560  9F43  BD 07 A9              LDA SCORE,X
+00561  9F46  9D 0D A9              STA HISCORE,X
+00562  9F49                        
+00563  9F49  9D 22 04              STA HISCOREPOS,X
+00564  9F4C  CA                    DEX
+00565  9F4D  10 F4                 BPL MAKENEWHI
+00566  9F4F             NOHISCORE  
+00567  9F4F  A9 00                 LDA #0
+00568  9F51  8D 00 A8              STA FIREBUTTON
+00569  9F54             GAMEOVERLOOP 
+00570  9F54  AD 00 DC              LDA $DC00
+00571  9F57  4A                    LSR
+00572  9F58  4A                    LSR
+00573  9F59  4A                    LSR
+00574  9F5A  4A                    LSR
+00575  9F5B  4A                    LSR
+00576  9F5C  2C 00 A8              BIT FIREBUTTON
+00577  9F5F  6E 00 A8              ROR FIREBUTTON
+00578  9F62  30 F0                 BMI GAMEOVERLOOP
+00579  9F64  50 EE                 BVC GAMEOVERLOOP
+00580  9F66                        
+00581  9F66  4C 00 60              JMP $6000 ;CHANGE TO JUMP TO HI-SCORE CHECKER
+00582  9F69             
+00583  9F69             MOVEPLAYER 
+00584  9F69  A9 04      LEFT       LDA #4
+00585  9F6B  2C 00 DC              BIT $DC00
+00586  9F6E  D0 0F                 BNE RIGHT
+00587  9F70  AD 02 A8              LDA OBJPOS
+00588  9F73  38                    SEC
+00589  9F74  E9 01                 SBC #1
+00590  9F76  C9 0C                 CMP #$0C
+00591  9F78  B0 02                 BCS LEFTOK
+00592  9F7A  A9 0C                 LDA #$0C
+00593  9F7C  8D 02 A8   LEFTOK     STA OBJPOS
+00594  9F7F  A9 08      RIGHT      LDA #8
+00595  9F81  2C 00 DC              BIT $DC00
+00596  9F84  D0 0F                 BNE FIRE
+00597  9F86  AD 02 A8              LDA OBJPOS
+00598  9F89  18                    CLC
+00599  9F8A  69 01                 ADC #1
+00600  9F8C  C9 A2                 CMP #$A2
+00601  9F8E  90 02                 BCC RIGHTOK
+00602  9F90  A9 A2                 LDA #$A2
+00603  9F92  8D 02 A8   RIGHTOK    STA OBJPOS
+00604  9F95  AD 00 DC   FIRE       LDA $DC00
+00605  9F98  4A                    LSR
+00606  9F99  4A                    LSR
+00607  9F9A  4A                    LSR
+00608  9F9B  4A                    LSR
+00609  9F9C  4A                    LSR
+00610  9F9D  2C 00 A8              BIT FIREBUTTON
+00611  9FA0  6E 00 A8              ROR FIREBUTTON
+00612  9FA3  30 3C                 BMI NOJOY1
+00613  9FA5  50 3A                 BVC NOJOY1
+00614  9FA7  A9 00                 LDA #0
+00615  9FA9  8D 00 A8              STA FIREBUTTON
+00616  9FAC  AD FD A7              LDA MISSILECOUNTER
+00617  9FAF  C9 30                 CMP #$30
+00618  9FB1  D0 31                 BNE MISSILECOUNTOK
+00619  9FB3  AD FE A7              LDA MISSILECOUNTER+1
+00620  9FB6  C9 30                 CMP #$30
+00621  9FB8  D0 2A                 BNE MISSILECOUNTOK
+00622  9FBA  A9 30                 LDA #$30
+00623  9FBC  8D FD A7              STA MISSILECOUNTER
+00624  9FBF  8D FE A7              STA MISSILECOUNTER+1
+00625  9FC2  A9 07                 LDA #7
+00626  9FC4  20 00 10              JSR SFXINIT
+00627  9FC7  A9 39                 LDA #$39
+00628  9FC9  8D FD A7              STA MISSILECOUNTER
+00629  9FCC  8D FE A7              STA MISSILECOUNTER+1
+00630  9FCF  A9 00                 LDA #0
+00631  9FD1  A2 00                 LDX #0
+00632  9FD3  8D E8 A7              STA PEXPLODEDELAY
+00633  9FD6  8E E9 A7              STX PEXPLODEPOINTER
+00634  9FD9  A9 01                 LDA #1
+00635  9FDB  8D EA A7              STA PLAYERDEAD
+00636  9FDE             
+00637  9FDE  4C 9D 9E              JMP KILLPLAYER
+00638  9FE1             NOJOY1
+00639  9FE1  4C 29 A0              JMP NOJOY
+00640  9FE4             MISSILECOUNTOK 
+00641  9FE4                        
+00642  9FE4  AD 04 A8              LDA OBJPOS+2
+00643  9FE7  C9 00                 CMP #$00
+00644  9FE9  D0 3E                 BNE NOJOY
+00645  9FEB                        ;LDA BULLETDEAD
+00646  9FEB                        ;CMP #$01
+00647  9FEB                        ;BEQ NOJOY
+00648  9FEB  AD 02 A8              LDA OBJPOS
+00649  9FEE  8D 04 A8              STA OBJPOS+2
+00650  9FF1  AD 03 A8              LDA OBJPOS+1
+00651  9FF4  8D 05 A8              STA OBJPOS+3
+00652  9FF7  A9 01                 LDA #$01
+00653  9FF9  20 00 10              JSR SFXINIT
+00654  9FFC  CE FE A7              DEC MISSILECOUNTER+1
+00655  9FFF  AD FE A7              LDA MISSILECOUNTER+1
+00656  A002  C9 2F                 CMP #$2F
+00657  A004  D0 17                 BNE MISSOK
+00658  A006  A9 39                 LDA #$39
+00659  A008  8D FE A7              STA MISSILECOUNTER+1
+00660  A00B  CE FD A7              DEC MISSILECOUNTER
+00661  A00E  AD FD A7              LDA MISSILECOUNTER
+00662  A011  C9 2F                 CMP #$2F
+00663  A013  D0 08                 BNE MISSOK
+00664  A015  A9 30                 LDA #$30
+00665  A017  8D FD A7              STA MISSILECOUNTER
+00666  A01A  8D FE A7              STA MISSILECOUNTER+1
+00667  A01D  AD FD A7   MISSOK     LDA MISSILECOUNTER
+00668  A020  8D D4 07              STA MISSILEPOS
+00669  A023  AD FE A7              LDA MISSILECOUNTER+1
+00670  A026  8D D5 07              STA MISSILEPOS+1
+00671  A029  60         NOJOY      RTS
+00672  A02A             
+00673  A02A             ;BULLET MOVER ROUTINE
+00674  A02A             
+00675  A02A  AD CF A7   MOVEBULLET LDA BULLETDEAD
+00676  A02D  C9 01                 CMP #$01
+00677  A02F  F0 1E                 BEQ EXPLODEBULLET
+00678  A031  AD C6 A7              LDA BULLET
+00679  A034  8D F9 07              STA $07F9
+00680  A037  A9 03                 LDA #$03
+00681  A039  8D 28 D0              STA $D028
+00682  A03C  AD 05 A8              LDA OBJPOS+3
+00683  A03F  38                    SEC
+00684  A040  E9 08                 SBC #8
+00685  A042  C9 0A                 CMP #$0A
+00686  A044  B0 05                 BCS NOTOUT
+00687  A046  A9 00                 LDA #$00
+00688  A048  8D 04 A8              STA OBJPOS+2
+00689  A04B  8D 05 A8   NOTOUT     STA OBJPOS+3
+00690  A04E  60                    RTS
+00691  A04F             
+00692  A04F             EXPLODEBULLET 
+00693  A04F  A9 07                 LDA #$07
+00694  A051  8D 28 D0              STA $D028
+00695  A054  AD E6 A7              LDA EXPLODEDELAY
+00696  A057  C9 01                 CMP #$01
+00697  A059  F0 04                 BEQ EXPLODEOK
+00698  A05B  EE E6 A7              INC EXPLODEDELAY
+00699  A05E  60                    RTS
+00700  A05F  A9 00      EXPLODEOK  LDA #$00
+00701  A061  8D E6 A7              STA EXPLODEDELAY
+00702  A064  AE E7 A7              LDX EXPLODEPOINTER
+00703  A067  BD 41 A8              LDA EXPLODEINSTR,X
+00704  A06A  8D F9 07              STA $07F9
+00705  A06D  E8                    INX
+00706  A06E  E0 08                 CPX #8
+00707  A070  F0 04                 BEQ RESCNCLRBULLET
+00708  A072  EE E7 A7              INC EXPLODEPOINTER
+00709  A075  60                    RTS
+00710  A076             
+00711  A076  A2 00      RESCNCLRBULLET LDX #$00
+00712  A078  8E 04 A8              STX OBJPOS+$02
+00713  A07B  8E 05 A8              STX OBJPOS+$03
+00714  A07E  8E E7 A7              STX EXPLODEPOINTER
+00715  A081  A9 00                 LDA #$00
+00716  A083  8D CF A7              STA BULLETDEAD
+00717  A086  60                    RTS
+00718  A087             
+00719  A087             ;TEST AND MOVE ENEMIES ACCORDINGLY
+00720  A087             
+00721  A087             TESTENEMIES 
+00722  A087  20 91 A0              JSR ENEMYANIM
+00723  A08A  20 D4 A0              JSR MOVEFROMINSTR
+00724  A08D  20 5A A1              JSR ENEMYBULLET
+00725  A090  60                    RTS
+00726  A091             
+00727  A091             ;OBJECT TYPE AND COLOUR
+00728  A091             
+00729  A091             ENEMYANIM  ;
+00730  A091  AD C8 A7   FRAME1     LDA SAUCER1
+00731  A094  8D FA 07              STA $07FA
+00732  A097  A9 0E      COLOUR1    LDA #$0E
+00733  A099  8D 29 D0              STA $D029
+00734  A09C             ;       RTS
+00735  A09C             
+00736  A09C             ENEMY2ANIM ;
+00737  A09C  AD C9 A7   FRAME2     LDA SAUCER2
+00738  A09F  8D FB 07              STA $07FB
+00739  A0A2  A9 0D      COLOUR2    LDA #$0D
+00740  A0A4  8D 2A D0              STA $D02A
+00741  A0A7             ;       RTS
+00742  A0A7             
+00743  A0A7  AD CA A7   FRAME3     LDA SAUCER3
+00744  A0AA  8D FC 07              STA $07FC
+00745  A0AD  A9 0A      COLOUR3    LDA #$0A
+00746  A0AF  8D 2B D0              STA $D02B
+00747  A0B2             ;       RTS
+00748  A0B2             
+00749  A0B2  AD CB A7   FRAME4     LDA SAUCER4
+00750  A0B5  8D FD 07              STA $07FD
+00751  A0B8  A9 0C      COLOUR4    LDA #$0C
+00752  A0BA  8D 2C D0              STA $D02C
+00753  A0BD             ;       RTS
+00754  A0BD             
+00755  A0BD  AD C8 A7   FRAME5     LDA SAUCER1
+00756  A0C0  8D FE 07              STA $07FE
+00757  A0C3  A9 04      COLOUR5    LDA #$04
+00758  A0C5  8D 2D D0              STA $D02D
+00759  A0C8             ;       RTS
+00760  A0C8             
+00761  A0C8  AD CC A7              LDA BULLET2
+00762  A0CB  8D FF 07              STA $07FF
+00763  A0CE  A9 0A                 LDA #$0A
+00764  A0D0  8D 2E D0              STA $D02E
+00765  A0D3  60                    RTS
+00766  A0D4             
+00767  A0D4             ;MOVE ALL ENEMY OBJECTS ACCORDING TO
+00768  A0D4             ;THE SPEED TABLE READ
+00769  A0D4             
+00770  A0D4             MOVEFROMINSTR ;
+00771  A0D4  A2 00                 LDX #$00
+00772  A0D6  BD 06 A8   MOVLOOP    LDA OBJPOS+4,X
+00773  A0D9  18                    CLC
+00774  A0DA  7D D2 A7              ADC ENEMY1SPEED,X
+00775  A0DD  9D 06 A8              STA OBJPOS+4,X
+00776  A0E0  BD 07 A8              LDA OBJPOS+5,X
+00777  A0E3  18                    CLC
+00778  A0E4  7D D3 A7              ADC ENEMY1SPEED+1,X
+00779  A0E7  9D 07 A8              STA OBJPOS+5,X
+00780  A0EA  E8                    INX
+00781  A0EB  E8                    INX
+00782  A0EC  E0 0A                 CPX #$0A
+00783  A0EE  D0 E6                 BNE MOVLOOP
+00784  A0F0  60                    RTS
+00785  A0F1             
+00786  A0F1             ;KAMIKAZE ... CALL A LOOP THAT
+00787  A0F1             ;CHECKS FOR THE PLAYER'S
+00788  A0F1             ;HORIZONTAL POSITION
+00789  A0F1             
+00790  A0F1             TESTKAMIKAZE ;
+00791  A0F1  AD EA A7              LDA PLAYERDEAD
+00792  A0F4  C9 01                 CMP #$01
+00793  A0F6  F0 22                 BEQ SKIPKAMIKAZE
+00794  A0F8  A2 00                 LDX #$00
+00795  A0FA  BD 07 A8   KAMILOOP   LDA OBJPOS+5,X
+00796  A0FD  C9 00                 CMP #$00
+00797  A0FF  D0 03                 BNE KCHECK
+00798  A101  4C 14 A1              JMP SKIPKAMIKAZE2
+00799  A104  BD 06 A8   KCHECK     LDA OBJPOS+4,X
+00800  A107  CD 2C A8              CMP COLLISION
+00801  A10A  90 08                 BCC SKIPKAMIKAZE2
+00802  A10C  CD 2D A8              CMP COLLISION+1
+00803  A10F  B0 03                 BCS SKIPKAMIKAZE2
+00804  A111  4C 1B A1              JMP KAMIKAZEON
+00805  A114  E8         SKIPKAMIKAZE2 INX
+00806  A115  E8                    INX
+00807  A116  E0 0A                 CPX #$0A
+00808  A118  D0 E0                 BNE KAMILOOP
+00809  A11A  60         SKIPKAMIKAZE RTS
+00810  A11B  EE EB A7   KAMIKAZEON INC KAMIKAZETIME
+00811  A11E  AD EB A7              LDA KAMIKAZETIME
+00812  A121  C9 19                 CMP #$19
+00813  A123  F0 01                 BEQ CHARGETOPLAYER
+00814  A125  60                    RTS
+00815  A126             CHARGETOPLAYER 
+00816  A126                        
+00817  A126                        ;LDA ENEMY1SPEED,X
+00818  A126                        ;STA ENEMY1SPEEDBACKUP,X
+00819  A126  A9 03                 LDA #3
+00820  A128  9D D3 A7              STA ENEMY1SPEED+1,X
+00821  A12B  A9 00                 LDA #$00
+00822  A12D  9D D2 A7              STA ENEMY1SPEED,X
+00823  A130  A9 00                 LDA #$00
+00824  A132  8D EB A7              STA KAMIKAZETIME
+00825  A135  A9 09                 LDA #9
+00826  A137  20 00 10              JSR SFXINIT
+00827  A13A  60                    RTS
+00828  A13B             
+00829  A13B             ;TEST KAMIKAZE POSITION - ENEMIES
+00830  A13B             ;SHOULD STOP AFTER LEAVING THE
+00831  A13B             ;SCREEN ... OR OFFSET!
+00832  A13B             
+00833  A13B             TESTEXIT   
+00834  A13B  A2 00                 LDX #$00
+00835  A13D  BD 07 A8   LEAVELOOP  LDA OBJPOS+5,X
+00836  A140  C9 F8                 CMP #$F8
+00837  A142  90 0F                 BCC INSCNCLR
+00838  A144                        
+00839  A144  BD DC A7              LDA ENEMY1SPEEDBACKUP,X
+00840  A147  9D D2 A7              STA ENEMY1SPEED,X
+00841  A14A  A9 00                 LDA #$00
+00842  A14C  9D 07 A8              STA OBJPOS+5,X
+00843  A14F  9D D3 A7              STA ENEMY1SPEED+1,X
+00844  A152  60                    RTS
+00845  A153  E8         INSCNCLR   INX
+00846  A154  E8                    INX
+00847  A155  E0 0A                 CPX #$0A
+00848  A157  D0 E4                 BNE LEAVELOOP
+00849  A159  60                    RTS
+00850  A15A                        
+00851  A15A             ;ENEMY BULLET ROUTINE ....
+00852  A15A             
+00853  A15A             ENEMYBULLET ;
+00854  A15A  AD 11 A8              LDA OBJPOS+15
+00855  A15D  18                    CLC
+00856  A15E  6D 01 A8              ADC ALIENBULLETSPEED
+00857  A161  C9 F2                 CMP #$F2
+00858  A163  90 09                 BCC INSCENE
+00859  A165  A9 00                 LDA #$00
+00860  A167  8D 10 A8              STA OBJPOS+14
+00861  A16A  8D 11 A8              STA OBJPOS+15
+00862  A16D  60                    RTS
+00863  A16E             INSCENE    
+00864  A16E  8D 11 A8              STA OBJPOS+15
+00865  A171  60                    RTS
+00866  A172                        
+00867  A172             ;TEST ENEMY FIRING, BY CALLING A
+00868  A172             ;SIMPLE LOOP AND THEN CHECK
+00869  A172             ;WHICH ENEMY CAN SHOOT.
+00870  A172             
+00871  A172             TESTENEMYFIRE 
+00872  A172  EE EE A7              INC ENEMYBULLETDELAY
+00873  A175  AD EE A7              LDA ENEMYBULLETDELAY
+00874  A178  CD EF A7              CMP ENEMYBULLETDELAYAMOUNT
+00875  A17B  D0 22                 BNE NOTSPAWNBULLET
+00876  A17D  A9 00                 LDA #$00
+00877  A17F  8D EE A7              STA ENEMYBULLETDELAY
+00878  A182  EE EC A7              INC ENEMYBULLETTIME
+00879  A185  AD EC A7              LDA ENEMYBULLETTIME
+00880  A188  CD ED A7              CMP ENEMYBULLETAMOUNT
+00881  A18B  D0 12                 BNE NOTSPAWNBULLET
+00882  A18D  A9 00                 LDA #$00
+00883  A18F  8D EC A7              STA ENEMYBULLETTIME
+00884  A192  AD CD A7              LDA BULL2RND
+00885  A195  C9 05                 CMP #$05
+00886  A197  F0 07                 BEQ RESCNCLRBULLF
+00887  A199  EE CD A7              INC BULL2RND
+00888  A19C  20 A5 A1              JSR PICKFIRING
+00889  A19F  60         NOTSPAWNBULLET RTS
+00890  A1A0  A9 00      RESCNCLRBULLF LDA #$00
+00891  A1A2  8D CD A7              STA BULL2RND
+00892  A1A5             PICKFIRING 
+00893  A1A5  8D CE A7              STA BULL2STORE
+00894  A1A8  AD CE A7              LDA BULL2STORE
+00895  A1AB  C9 00                 CMP #$00
+00896  A1AD  D0 03                 BNE NOTSAU1FIRE
+00897  A1AF  4C CF A1              JMP SAU1FIRE
+00898  A1B2             NOTSAU1FIRE 
+00899  A1B2  C9 01                 CMP #$01
+00900  A1B4  D0 03                 BNE NOTSAU2FIRE
+00901  A1B6  4C ED A1              JMP SAU2FIRE
+00902  A1B9             NOTSAU2FIRE 
+00903  A1B9  C9 02                 CMP #$02
+00904  A1BB  D0 03                 BNE NOTSAU3FIRE
+00905  A1BD  4C 0B A2              JMP SAU3FIRE
+00906  A1C0             NOTSAU3FIRE 
+00907  A1C0  C9 03                 CMP #$03
+00908  A1C2  D0 03                 BNE NOTSAU4FIRE
+00909  A1C4  4C 29 A2              JMP SAU4FIRE
+00910  A1C7             NOTSAU4FIRE 
+00911  A1C7  C9 04                 CMP #$04
+00912  A1C9  D0 03                 BNE NOTSAU5FIRE
+00913  A1CB  4C 47 A2              JMP SAU5FIRE
+00914  A1CE             NOTSAU5FIRE 
+00915  A1CE  60                    RTS
+00916  A1CF  AD 10 A8   SAU1FIRE   LDA OBJPOS+14
+00917  A1D2  C9 00                 CMP #$00
+00918  A1D4  D0 16                 BNE NOS1FIRE
+00919  A1D6  AD 07 A8              LDA OBJPOS+5
+00920  A1D9  C9 00                 CMP #$00
+00921  A1DB  F0 0F                 BEQ NOS1FIRE
+00922  A1DD  AD 06 A8              LDA OBJPOS+4
+00923  A1E0  8D 10 A8              STA OBJPOS+14
+00924  A1E3  AD 07 A8              LDA OBJPOS+5
+00925  A1E6  8D 11 A8              STA OBJPOS+15
+00926  A1E9  4C 65 A2              JMP TESTBOMBSFX
+00927  A1EC  60         NOS1FIRE   RTS
+00928  A1ED                        
+00929  A1ED  AD 10 A8   SAU2FIRE   LDA OBJPOS+14
+00930  A1F0  C9 00                 CMP #$00
+00931  A1F2  D0 16                 BNE NOS2FIRE
+00932  A1F4  AD 09 A8              LDA OBJPOS+7
+00933  A1F7  C9 00                 CMP #$00
+00934  A1F9  F0 0F                 BEQ NOS2FIRE
+00935  A1FB  AD 08 A8              LDA OBJPOS+6
+00936  A1FE  8D 10 A8              STA OBJPOS+14
+00937  A201  AD 09 A8              LDA OBJPOS+7
+00938  A204  8D 11 A8              STA OBJPOS+15
+00939  A207  4C 65 A2              JMP TESTBOMBSFX
+00940  A20A  60         NOS2FIRE   RTS
+00941  A20B                        
+00942  A20B  AD 10 A8   SAU3FIRE   LDA OBJPOS+14
+00943  A20E  C9 00                 CMP #$00
+00944  A210  D0 16                 BNE NOS3FIRE
+00945  A212  AD 0B A8              LDA OBJPOS+9
+00946  A215  C9 00                 CMP #$00
+00947  A217  F0 0F                 BEQ NOS3FIRE
+00948  A219  AD 0A A8              LDA OBJPOS+8
+00949  A21C  8D 10 A8              STA OBJPOS+14
+00950  A21F  AD 0B A8              LDA OBJPOS+9
+00951  A222  8D 11 A8              STA OBJPOS+15
+00952  A225  4C 65 A2              JMP TESTBOMBSFX
+00953  A228                        
+00954  A228  60         NOS3FIRE   RTS
+00955  A229  AD 10 A8   SAU4FIRE   LDA OBJPOS+14
+00956  A22C  C9 00                 CMP #$00
+00957  A22E  D0 16                 BNE NOS4FIRE
+00958  A230  AD 0D A8              LDA OBJPOS+11
+00959  A233  C9 00                 CMP #$00
+00960  A235  F0 0F                 BEQ NOS4FIRE
+00961  A237  AD 0C A8              LDA OBJPOS+10
+00962  A23A  8D 10 A8              STA OBJPOS+14
+00963  A23D  AD 0D A8              LDA OBJPOS+11
+00964  A240  8D 11 A8              STA OBJPOS+15
+00965  A243  4C 65 A2              JMP TESTBOMBSFX
+00966  A246  60         NOS4FIRE   RTS
+00967  A247  AD 10 A8   SAU5FIRE   LDA OBJPOS+14
+00968  A24A  C9 00                 CMP #$00
+00969  A24C  D0 F8                 BNE NOS4FIRE
+00970  A24E  AD 0F A8              LDA OBJPOS+13
+00971  A251  C9 00                 CMP #$00
+00972  A253  F0 0F                 BEQ NOS5FIRE
+00973  A255  AD 0E A8              LDA OBJPOS+12
+00974  A258  8D 10 A8              STA OBJPOS+14
+00975  A25B  AD 0F A8              LDA OBJPOS+13
+00976  A25E  8D 11 A8              STA OBJPOS+15
+00977  A261  4C 65 A2              JMP TESTBOMBSFX
+00978  A264  60         NOS5FIRE   RTS
+00979  A265             
+00980  A265             ;SAUCER BOMB SOUND FX
+00981  A265             ;THIS ONLY TAKES PLACE
+00982  A265             ;IF BULLET IS IN RANGE
+00983  A265             ;OF THE GAME SCREEN
+00984  A265             ;IN ORDER TO PREVENT
+00985  A265             ;CONSTANT FIRING SFX
+00986  A265             
+00987  A265             TESTBOMBSFX 
+00988  A265  AD 10 A8              LDA OBJPOS+14
+00989  A268  C9 0C                 CMP #BOMBRANGELEFT
+00990  A26A  90 14                 BCC NOBOMBSFX
+00991  A26C  C9 A4                 CMP #BOMBRANGERIGHT
+00992  A26E  B0 10                 BCS NOBOMBSFX
+00993  A270  AD 11 A8              LDA OBJPOS+15
+00994  A273  C9 36                 CMP #BOMBRANGETOP
+00995  A275  90 09                 BCC NOBOMBSFX
+00996  A277  C9 FA                 CMP #BOMBRANGEBOTTOM
+00997  A279  B0 05                 BCS NOBOMBSFX
+00998  A27B  A9 03                 LDA #$03
+00999  A27D  20 00 10              JSR SFXINIT
+01000  A280  60         NOBOMBSFX  RTS
+01001  A281                        
+01002  A281             ;COLLISION ROUTINE
+01003  A281             
+01004  A281             TESTCOLLISION 
+01005  A281  AD 02 A8              LDA OBJPOS
+01006  A284  38                    SEC
+01007  A285  E9 06                 SBC #$06
+01008  A287  8D 2C A8              STA COLLISION
+01009  A28A  18                    CLC
+01010  A28B  69 0C                 ADC #$0C
+01011  A28D  8D 2D A8              STA COLLISION+1
+01012  A290  AD 03 A8              LDA OBJPOS+1
+01013  A293  38                    SEC
+01014  A294  E9 0C                 SBC #$0C
+01015  A296  8D 2E A8              STA COLLISION+2
+01016  A299  18                    CLC
+01017  A29A  69 18                 ADC #$18
+01018  A29C  8D 2F A8              STA COLLISION+3
+01019  A29F  AD 04 A8              LDA OBJPOS+2
+01020  A2A2  38                    SEC
+01021  A2A3  E9 06                 SBC #$06
+01022  A2A5  8D 30 A8              STA COLLISION+4
+01023  A2A8  18                    CLC
+01024  A2A9  69 0C                 ADC #$0C
+01025  A2AB  8D 31 A8              STA COLLISION+5
+01026  A2AE  AD 05 A8              LDA OBJPOS+3
+01027  A2B1  38                    SEC
+01028  A2B2  E9 0C                 SBC #$0C
+01029  A2B4  8D 32 A8              STA COLLISION+6
+01030  A2B7  18                    CLC
+01031  A2B8  69 18                 ADC #$18
+01032  A2BA  8D 33 A8              STA COLLISION+7
+01033  A2BD  20 C7 A2              JSR BULLCOLL
+01034  A2C0  20 6D A3              JSR PLAYERCOLL
+01035  A2C3  20 B4 A3              JSR BULL2PLAYER
+01036  A2C6  60                    RTS
+01037  A2C7             
+01038  A2C7             ;ENEMY TO BULLET COLLISION
+01039  A2C7             
+01040  A2C7             BULLCOLL   
+01041  A2C7  20 D7 A2              JSR ENEMY1TOBULL
+01042  A2CA  20 F5 A2              JSR ENEMY2TOBULL
+01043  A2CD  20 13 A3              JSR ENEMY3TOBULL
+01044  A2D0  20 31 A3              JSR ENEMY4TOBULL
+01045  A2D3  20 4F A3              JSR ENEMY5TOBULL
+01046  A2D6  60                    RTS
+01047  A2D7             
+01048  A2D7             ;ENEMY 1 TO BULLET
+01049  A2D7             
+01050  A2D7             ENEMY1TOBULL 
+01051  A2D7  AD 06 A8              LDA OBJPOS+4
+01052  A2DA  CD 30 A8              CMP COLLISION+4
+01053  A2DD  90 15                 BCC NOTHIT1
+01054  A2DF  CD 31 A8              CMP COLLISION+5
+01055  A2E2  B0 10                 BCS NOTHIT1
+01056  A2E4  AD 07 A8              LDA OBJPOS+5
+01057  A2E7  CD 32 A8              CMP COLLISION+6
+01058  A2EA  90 08                 BCC NOTHIT1
+01059  A2EC  CD 33 A8              CMP COLLISION+7
+01060  A2EF  B0 03                 BCS NOTHIT1
+01061  A2F1  4C E5 A3              JMP KILLTESTENEMY1
+01062  A2F4  60         NOTHIT1    RTS
+01063  A2F5             
+01064  A2F5             ;ENEMY 2 TO BULLET
+01065  A2F5             
+01066  A2F5             ENEMY2TOBULL 
+01067  A2F5  AD 08 A8              LDA OBJPOS+6
+01068  A2F8  CD 30 A8              CMP COLLISION+4
+01069  A2FB  90 15                 BCC NOTHIT2
+01070  A2FD  CD 31 A8              CMP COLLISION+5
+01071  A300  B0 10                 BCS NOTHIT2
+01072  A302  AD 09 A8              LDA OBJPOS+7
+01073  A305  CD 32 A8              CMP COLLISION+6
+01074  A308  90 08                 BCC NOTHIT2
+01075  A30A  CD 33 A8              CMP COLLISION+7
+01076  A30D  B0 03                 BCS NOTHIT2
+01077  A30F  4C 0F A4              JMP KILLTESTENEMY2
+01078  A312  60         NOTHIT2    RTS
+01079  A313             
+01080  A313             ;ENEMY 3 TO BULLET
+01081  A313             
+01082  A313             ENEMY3TOBULL 
+01083  A313  AD 0A A8              LDA OBJPOS+8
+01084  A316  CD 30 A8              CMP COLLISION+4
+01085  A319  90 15                 BCC NOTHIT3
+01086  A31B  CD 31 A8              CMP COLLISION+5
+01087  A31E  B0 10                 BCS NOTHIT3
+01088  A320  AD 0B A8              LDA OBJPOS+9
+01089  A323  CD 32 A8              CMP COLLISION+6
+01090  A326  90 08                 BCC NOTHIT3
+01091  A328  CD 33 A8              CMP COLLISION+7
+01092  A32B  B0 03                 BCS NOTHIT3
+01093  A32D  4C 3D A4              JMP KILLTESTENEMY3
+01094  A330  60         NOTHIT3    RTS
+01095  A331             
+01096  A331             ;ENEMY 4 TO BULLET
+01097  A331             
+01098  A331             ENEMY4TOBULL 
+01099  A331  AD 0C A8              LDA OBJPOS+10
+01100  A334  CD 30 A8              CMP COLLISION+4
+01101  A337  90 15                 BCC NOTHIT4
+01102  A339  CD 31 A8              CMP COLLISION+5
+01103  A33C  B0 10                 BCS NOTHIT4
+01104  A33E  AD 0D A8              LDA OBJPOS+11
+01105  A341  CD 32 A8              CMP COLLISION+6
+01106  A344  90 08                 BCC NOTHIT4
+01107  A346  CD 33 A8              CMP COLLISION+7
+01108  A349  B0 03                 BCS NOTHIT4
+01109  A34B  4C 6B A4              JMP KILLTESTENEMY4
+01110  A34E  60         NOTHIT4    RTS
+01111  A34F             
+01112  A34F             ;ENEMY 5 TO BULLET
+01113  A34F             
+01114  A34F             ENEMY5TOBULL 
+01115  A34F  AD 0E A8              LDA OBJPOS+12
+01116  A352  CD 30 A8              CMP COLLISION+4
+01117  A355  90 15                 BCC NOTHIT5
+01118  A357  CD 31 A8              CMP COLLISION+5
+01119  A35A  B0 10                 BCS NOTHIT5
+01120  A35C  AD 0F A8              LDA OBJPOS+13
+01121  A35F  CD 32 A8              CMP COLLISION+6
+01122  A362  90 08                 BCC NOTHIT5
+01123  A364  CD 33 A8              CMP COLLISION+7
+01124  A367  B0 03                 BCS NOTHIT5
+01125  A369  4C 99 A4              JMP KILLTESTENEMY5
+01126  A36C  60         NOTHIT5    RTS
+01127  A36D             
+01128  A36D             ;ENEMY TO PLAYER COLLISION ...
+01129  A36D             
+01130  A36D             PLAYERCOLL 
+01131  A36D  A2 00                 LDX #$00
+01132  A36F  BD 06 A8   COLLOOP    LDA OBJPOS+4,X
+01133  A372  CD 2C A8              CMP COLLISION
+01134  A375  90 16                 BCC NOTHIT6
+01135  A377  CD 2D A8              CMP COLLISION+1
+01136  A37A  B0 11                 BCS NOTHIT6
+01137  A37C  BD 07 A8              LDA OBJPOS+5,X
+01138  A37F  CD 2E A8              CMP COLLISION+2
+01139  A382  90 09                 BCC NOTHIT6
+01140  A384  CD 2F A8              CMP COLLISION+3
+01141  A387  B0 04                 BCS NOTHIT6
+01142  A389  4C 94 A3              JMP SHIPHIT
+01143  A38C  60                    RTS
+01144  A38D  E8         NOTHIT6    INX
+01145  A38E  E8                    INX
+01146  A38F  E0 0A                 CPX #$0A
+01147  A391  D0 DC                 BNE COLLOOP
+01148  A393  60                    RTS
+01149  A394  AD EA A7   SHIPHIT    LDA PLAYERDEAD
+01150  A397  C9 01                 CMP #$01
+01151  A399  F0 18                 BEQ IGNOREKILLED
+01152  A39B  A9 01                 LDA #$01
+01153  A39D  8D EA A7              STA PLAYERDEAD
+01154  A3A0                        
+01155  A3A0  A9 00                 LDA #0
+01156  A3A2  9D 07 A8              STA OBJPOS+5,X
+01157  A3A5  9D D3 A7              STA ENEMY1SPEED+1,X
+01158  A3A8  BD DC A7              LDA ENEMY1SPEEDBACKUP,X
+01159  A3AB  9D D2 A7              STA ENEMY1SPEED,X
+01160  A3AE                        
+01161  A3AE  A9 04                 LDA #$04
+01162  A3B0  20 00 10              JSR SFXINIT
+01163  A3B3                        
+01164  A3B3             
+01165  A3B3             IGNOREKILLED 
+01166  A3B3  60                    RTS
+01167  A3B4             
+01168  A3B4             ;ENEMY BULLET TO PLAYER COLLISION
+01169  A3B4             
+01170  A3B4             BULL2PLAYER 
+01171  A3B4  AD EA A7              LDA PLAYERDEAD
+01172  A3B7  C9 01                 CMP #$01
+01173  A3B9  F0 29                 BEQ NOP2
+01174  A3BB  AD 10 A8              LDA OBJPOS+14
+01175  A3BE  CD 2C A8              CMP COLLISION
+01176  A3C1  90 21                 BCC NOP2
+01177  A3C3  CD 2D A8              CMP COLLISION+1
+01178  A3C6  B0 1C                 BCS NOP2
+01179  A3C8  AD 11 A8              LDA OBJPOS+15
+01180  A3CB  CD 2E A8              CMP COLLISION+2
+01181  A3CE  90 14                 BCC NOP2
+01182  A3D0  CD 2F A8              CMP COLLISION+3
+01183  A3D3  B0 0F                 BCS NOP2
+01184  A3D5  A9 00                 LDA #$00
+01185  A3D7  A9 00                 LDA #$00
+01186  A3D9  8D 10 A8              STA OBJPOS+14
+01187  A3DC  8D E8 A7              STA PEXPLODEDELAY
+01188  A3DF  A9 01                 LDA #$01
+01189  A3E1  8D EA A7              STA PLAYERDEAD
+01190  A3E4  60         NOP2       RTS
+01191  A3E5             
+01192  A3E5             ;---------------------------------
+01193  A3E5             ;KILLTEST ENEMY OBJECTS
+01194  A3E5             ;---------------------------------
+01195  A3E5             
+01196  A3E5             KILLTESTENEMY1 
+01197  A3E5  AD CF A7              LDA BULLETDEAD
+01198  A3E8  C9 01                 CMP #$01
+01199  A3EA  F0 22                 BEQ ENEMY1NODIE
+01200  A3EC                        
+01201  A3EC  A9 00                 LDA #$00
+01202  A3EE  8D 07 A8              STA OBJPOS+5
+01203  A3F1  8D D3 A7              STA ENEMY1SPEED+1
+01204  A3F4  AD DC A7              LDA ENEMY1SPEEDBACKUP
+01205  A3F7  8D D2 A7              STA ENEMY1SPEED
+01206  A3FA  20 C7 A4              JSR INITBULLEXP
+01207  A3FD  A9 01                 LDA #$01
+01208  A3FF  8D CF A7              STA BULLETDEAD
+01209  A402             
+01210  A402  20 CE A4              JSR ADDSCORE
+01211  A405  AD 92 A0              LDA FRAME1+1
+01212  A408  8D F9 A7              STA SCOREZONE
+01213  A40B  20 CE A4              JSR ADDSCORE
+01214  A40E             ENEMY1NODIE 
+01215  A40E  60                    RTS
+01216  A40F             
+01217  A40F             KILLTESTENEMY2 
+01218  A40F  AD CF A7              LDA BULLETDEAD
+01219  A412  C9 01                 CMP #$01
+01220  A414  F0 26                 BEQ ENEMY2NODIE
+01221  A416  AD 09 A8              LDA OBJPOS+7
+01222  A419  C9 00                 CMP #$00
+01223  A41B  F0 1F                 BEQ ENEMY2NODIE
+01224  A41D  A9 00                 LDA #$00
+01225  A41F  8D 09 A8              STA OBJPOS+7
+01226  A422  8D D5 A7              STA ENEMY2SPEED+1
+01227  A425  AD DE A7              LDA ENEMY2SPEEDBACKUP
+01228  A428  8D D4 A7              STA ENEMY2SPEED
+01229  A42B  20 C7 A4              JSR INITBULLEXP
+01230  A42E  A9 01                 LDA #$01
+01231  A430  8D CF A7              STA BULLETDEAD
+01232  A433  AD 9D A0              LDA FRAME2+1
+01233  A436  8D F9 A7              STA SCOREZONE
+01234  A439  20 CE A4              JSR ADDSCORE
+01235  A43C             ENEMY2NODIE 
+01236  A43C  60                    RTS
+01237  A43D             
+01238  A43D             KILLTESTENEMY3 
+01239  A43D  AD CF A7              LDA BULLETDEAD
+01240  A440  C9 01                 CMP #$01
+01241  A442  F0 26                 BEQ ENEMY3NODIE
+01242  A444  AD 0B A8              LDA OBJPOS+9
+01243  A447  C9 00                 CMP #$00
+01244  A449  F0 1F                 BEQ ENEMY3NODIE
+01245  A44B  A9 00                 LDA #$00
+01246  A44D  8D 0B A8              STA OBJPOS+9
+01247  A450  8D D7 A7              STA ENEMY3SPEED+1
+01248  A453  AD E0 A7              LDA ENEMY3SPEEDBACKUP
+01249  A456  8D D6 A7              STA ENEMY3SPEED
+01250  A459  20 C7 A4              JSR INITBULLEXP
+01251  A45C  A9 01                 LDA #$01
+01252  A45E  8D CF A7              STA BULLETDEAD
+01253  A461  AD A8 A0              LDA FRAME3+1
+01254  A464  8D F9 A7              STA SCOREZONE
+01255  A467  20 CE A4              JSR ADDSCORE
+01256  A46A  60         ENEMY3NODIE RTS
+01257  A46B             
+01258  A46B             KILLTESTENEMY4 
+01259  A46B  AD CF A7              LDA BULLETDEAD
+01260  A46E  C9 01                 CMP #$01
+01261  A470  F0 26                 BEQ ENEMY4NODIE
+01262  A472  AD 0D A8              LDA OBJPOS+11
+01263  A475  C9 00                 CMP #$00
+01264  A477  F0 1F                 BEQ ENEMY4NODIE
+01265  A479  A9 00                 LDA #0
+01266  A47B  8D 0D A8              STA OBJPOS+11
+01267  A47E  8D D9 A7              STA ENEMY4SPEED+1
+01268  A481  AD E2 A7              LDA ENEMY4SPEEDBACKUP
+01269  A484  8D D8 A7              STA ENEMY4SPEED
+01270  A487  20 C7 A4              JSR INITBULLEXP
+01271  A48A  A9 01                 LDA #$01
+01272  A48C  8D CF A7              STA BULLETDEAD
+01273  A48F  AD B3 A0              LDA FRAME4+1
+01274  A492  8D F9 A7              STA SCOREZONE
+01275  A495  20 CE A4              JSR ADDSCORE
+01276  A498  60         ENEMY4NODIE RTS
+01277  A499             
+01278  A499             KILLTESTENEMY5 
+01279  A499  AD CF A7              LDA BULLETDEAD
+01280  A49C  C9 01                 CMP #$01
+01281  A49E  F0 26                 BEQ ENEMY5NODIE
+01282  A4A0  AD 0F A8              LDA OBJPOS+13
+01283  A4A3  C9 00                 CMP #$00
+01284  A4A5  F0 1F                 BEQ ENEMY5NODIE
+01285  A4A7  A9 00                 LDA #0
+01286  A4A9  8D 0F A8              STA OBJPOS+13
+01287  A4AC  8D DB A7              STA ENEMY5SPEED+1
+01288  A4AF  AD E4 A7              LDA ENEMY5SPEEDBACKUP
+01289  A4B2  8D DA A7              STA ENEMY5SPEED
+01290  A4B5  20 C7 A4              JSR INITBULLEXP
+01291  A4B8  A9 01                 LDA #$01
+01292  A4BA  8D CF A7              STA BULLETDEAD
+01293  A4BD  AD BE A0              LDA FRAME5+1
+01294  A4C0  8D F9 A7              STA SCOREZONE
+01295  A4C3  20 CE A4              JSR ADDSCORE
+01296  A4C6  60         ENEMY5NODIE RTS
+01297  A4C7             INITBULLEXP 
+01298  A4C7  AD 5D A8              LDA EXPLODEFRAME
+01299  A4CA  8D F9 07              STA $07F9
+01300  A4CD  60                    RTS
+01301  A4CE             ;SCORING ... ADD POINTS
+01302  A4CE             
+01303  A4CE             ADDSCORE   
+01304  A4CE  AD F9 A7              LDA SCOREZONE
+01305  A4D1  C9 C8                 CMP #<SAUCER1
+01306  A4D3  F0 0D                 BEQ SCORE500
+01307  A4D5  C9 C9                 CMP #<SAUCER2
+01308  A4D7  F0 0F                 BEQ SCORE300
+01309  A4D9  C9 CA                 CMP #<SAUCER3
+01310  A4DB  F0 0E                 BEQ SCORE200
+01311  A4DD  C9 CB                 CMP #<SAUCER4
+01312  A4DF  F0 0D                 BEQ SCORE100
+01313  A4E1  60                    RTS
+01314  A4E2             
+01315  A4E2  20 25 A6   SCORE500   JSR SCORECALC
+01316  A4E5  20 25 A6              JSR SCORECALC
+01317  A4E8  20 25 A6   SCORE300   JSR SCORECALC
+01318  A4EB  20 25 A6   SCORE200   JSR SCORECALC
+01319  A4EE  20 25 A6   SCORE100   JSR SCORECALC
+01320  A4F1  CE FA A7              DEC SHOTCOUNT
+01321  A4F4  AD FA A7              LDA SHOTCOUNT
+01322  A4F7  C9 00                 CMP #0
+01323  A4F9  F0 01                 BEQ LEVELCOMPLETE
+01324  A4FB  60                    RTS
+01325  A4FC             
+01326  A4FC             ;DESTROY ALL OF THE ENEMIES ON SCREEN
+01327  A4FC             ;THEN DISPLAY THE LEVEL COMPLETE TEXT
+01328  A4FC             
+01329  A4FC             LEVELCOMPLETE 
+01330  A4FC  A9 00                 LDA #0
+01331  A4FE  8D E6 A7              STA EXPLODEDELAY
+01332  A501  A2 00                 LDX #0
+01333  A503  8E E7 A7              STX EXPLODEPOINTER
+01334  A506  A2 00                 LDX #$00
+01335  A508             COPYEXPFRAME 
+01336  A508  BD 5D A8              LDA EXPLODEFRAME,X
+01337  A50B  9D F9 07              STA $07F9,X
+01338  A50E  E8                    INX
+01339  A50F  E0 07                 CPX #7
+01340  A511  D0 F5                 BNE COPYEXPFRAME
+01341  A513  A9 06                 LDA #6
+01342  A515  20 00 10              JSR SFXINIT
+01343  A518                        
+01344  A518             LCLOOP
+01345  A518  A9 00                 LDA #$00
+01346  A51A  8D C0 A7              STA RT
+01347  A51D  CD C0 A7              CMP RT
+01348  A520  F0 FB                 BEQ *-3
+01349  A522  20 34 9E              JSR EXPAND
+01350  A525  20 2B A5              JSR DESTROYALL
+01351  A528  4C 18 A5              JMP LCLOOP
+01352  A52B             
+01353  A52B             ;DESTROY ALL OF THE ENEMIES ON SCREEN
+01354  A52B             ;BY FORCING AN EXPLOSION ON ALL VISIBLE
+01355  A52B             ;SPRITES
+01356  A52B             
+01357  A52B             DESTROYALL 
+01358  A52B  AD E6 A7              LDA EXPLODEDELAY
+01359  A52E  C9 02                 CMP #$02
+01360  A530  F0 04                 BEQ DOLCEXPLOSION
+01361  A532  EE E6 A7              INC EXPLODEDELAY
+01362  A535  60                    RTS
+01363  A536             DOLCEXPLOSION 
+01364  A536  A9 00                 LDA #0
+01365  A538  8D E6 A7              STA EXPLODEDELAY
+01366  A53B  AE E7 A7              LDX EXPLODEPOINTER
+01367  A53E  BD 5D A8              LDA EXPLODEFRAME,X
+01368  A541  8D F9 07              STA $07F9
+01369  A544  8D FA 07              STA $07FA
+01370  A547  8D FB 07              STA $07FB
+01371  A54A  8D FC 07              STA $07FC
+01372  A54D  8D FD 07              STA $07FD
+01373  A550  8D FE 07              STA $07FE
+01374  A553  8D FF 07              STA $07FF
+01375  A556  A9 07                 LDA #$07
+01376  A558  8D 28 D0              STA $D028
+01377  A55B  8D 29 D0              STA $D029
+01378  A55E  8D 2A D0              STA $D02A
+01379  A561  8D 2B D0              STA $D02B
+01380  A564  8D 2C D0              STA $D02C
+01381  A567  8D 2D D0              STA $D02D
+01382  A56A  8D 2E D0              STA $D02E
+01383  A56D  E8                    INX
+01384  A56E  E0 08                 CPX #8
+01385  A570  F0 04                 BEQ LCEXPLODEEND
+01386  A572  EE E7 A7              INC EXPLODEPOINTER
+01387  A575  60                    RTS
+01388  A576             
+01389  A576             ;AWARD AMMO BONUS TO SCORE POINTS
+01390  A576                        
+01391  A576             LCEXPLODEEND 
+01392  A576                        
+01393  A576  A9 00                 LDA #0
+01394  A578  8D 15 D0              STA $D015
+01395  A57B  8D FF A7              STA AMMOBONUSTIME
+01396  A57E             
+01397  A57E             COUNTDOWNLOOP 
+01398  A57E  A9 00                 LDA #0
+01399  A580  8D C0 A7              STA RT
+01400  A583  CD C0 A7              CMP RT
+01401  A586  F0 FB                 BEQ *-3
+01402  A588  20 8E A5              JSR DOBONUS
+01403  A58B  4C 7E A5              JMP COUNTDOWNLOOP
+01404  A58E             
+01405  A58E             DOBONUS
+01406  A58E  AD FF A7              LDA AMMOBONUSTIME
+01407  A591  C9 04                 CMP #4
+01408  A593  F0 04                 BEQ TAKEAMMOANDGIVEPOINTS
+01409  A595  EE FF A7              INC AMMOBONUSTIME
+01410  A598  60                    RTS
+01411  A599             TAKEAMMOANDGIVEPOINTS 
+01412  A599  A9 00                 LDA #0
+01413  A59B  8D FF A7              STA AMMOBONUSTIME
+01414  A59E  20 E2 A4              JSR SCORE500
+01415  A5A1  CE FE A7              DEC MISSILECOUNTER+1
+01416  A5A4  AD FE A7              LDA MISSILECOUNTER+1
+01417  A5A7  C9 2F                 CMP #$2F
+01418  A5A9  D0 0F                 BNE BONUSMCOUNTOK
+01419  A5AB  A9 39                 LDA #$39
+01420  A5AD  8D FE A7              STA MISSILECOUNTER+1
+01421  A5B0  CE FD A7              DEC MISSILECOUNTER
+01422  A5B3  AD FD A7              LDA MISSILECOUNTER
+01423  A5B6  C9 2F                 CMP #$2F
+01424  A5B8  F0 12                 BEQ STOPBONUS
+01425  A5BA             BONUSMCOUNTOK 
+01426  A5BA  AD FE A7              LDA MISSILECOUNTER+1
+01427  A5BD  8D D5 07              STA MISSILEPOS+1
+01428  A5C0  AD FD A7              LDA MISSILECOUNTER
+01429  A5C3  8D D4 07              STA MISSILEPOS
+01430  A5C6  A9 08                 LDA #8
+01431  A5C8  20 00 10              JSR SFXINIT
+01432  A5CB  60                    RTS
+01433  A5CC             STOPBONUS  
+01434  A5CC  A9 30                 LDA #$30
+01435  A5CE  8D FD A7              STA MISSILECOUNTER
+01436  A5D1  8D FE A7              STA MISSILECOUNTER+1
+01437  A5D4  8D D4 07              STA MISSILEPOS
+01438  A5D7  8D D5 07              STA MISSILEPOS+1
+01439  A5DA             
+01440  A5DA  A2 00                 LDX #$00
+01441  A5DC             COPYLCTEXT 
+01442  A5DC  BD 1C A9              LDA LCTEXT,X
+01443  A5DF  9D D5 04              STA LCPOS,X
+01444  A5E2  A9 05                 LDA #5
+01445  A5E4  9D D5 D8              STA LCCOL,X
+01446  A5E7  E8                    INX
+01447  A5E8  E0 0E                 CPX #LCTEXTEND-LCTEXT
+01448  A5EA  D0 F0                 BNE COPYLCTEXT
+01449  A5EC  A9 03                 LDA #3
+01450  A5EE  20 00 10              JSR SFXINIT
+01451  A5F1  A9 00                 LDA #0
+01452  A5F3  8D 00 A8              STA FIREBUTTON
+01453  A5F6             WAITNEXT   
+01454  A5F6  AD 00 DC              LDA $DC00
+01455  A5F9  4A                    LSR
+01456  A5FA  4A                    LSR
+01457  A5FB  4A                    LSR
+01458  A5FC  4A                    LSR
+01459  A5FD  4A                    LSR
+01460  A5FE  2C 00 A8              BIT FIREBUTTON
+01461  A601  6E 00 A8              ROR FIREBUTTON
+01462  A604  30 F0                 BMI WAITNEXT
+01463  A606  50 EE                 BVC WAITNEXT
+01464  A608  A9 00                 LDA #0
+01465  A60A  8D 00 A8              STA FIREBUTTON
+01466  A60D  EE FB A7              INC LEVELCOUNTER
+01467  A610  EE FC A7              INC LEVELPOINTER
+01468  A613  AD FB A7              LDA LEVELCOUNTER
+01469  A616  C9 09                 CMP #9
+01470  A618  F0 03                 BEQ RESETLEVELCOUNTER
+01471  A61A  4C 4C 9C              JMP NEXTLEVEL
+01472  A61D             RESETLEVELCOUNTER 
+01473  A61D  A9 01                 LDA #1
+01474  A61F  8D FB A7              STA LEVELCOUNTER
+01475  A622  4C 4C 9C              JMP NEXTLEVEL
+01476  A625             
+01477  A625             
+01478  A625  EE 0B A9   SCORECALC  INC SCORE+4
+01479  A628  A2 04                 LDX #$04
+01480  A62A  BD 07 A9   LOOPSCORE  LDA SCORE,X
+01481  A62D  C9 3A                 CMP #$3A
+01482  A62F  D0 08                 BNE SCOREOK
+01483  A631  A9 30                 LDA #$30
+01484  A633  9D 07 A9              STA SCORE,X
+01485  A636  FE 06 A9              INC SCORE-1,X
+01486  A639  CA         SCOREOK    DEX
+01487  A63A  D0 EE                 BNE LOOPSCORE
+01488  A63C  A9 02                 LDA #2
+01489  A63E  20 00 10              JSR SFXINIT
+01490  A641  A2 05                 LDX #$05
+01491  A643             MASTERPANEL 
+01492  A643  BD 07 A9              LDA SCORE,X
+01493  A646  9D 07 04              STA SCOREPOS,X
+01494  A649  CA                    DEX
+01495  A64A  10 F7                 BPL MASTERPANEL
+01496  A64C  60                    RTS
+01497  A64D                        
+01498  A64D             ;BULLET DEATH ROUTINE ...
+01499  A64D             
+01500  A64D  A2 00                 LDX #$00
+01501  A64F  8E E7 A7              STX EXPLODEPOINTER
+01502  A652  8E E6 A7              STX EXPLODEDELAY
+01503  A655  60                    RTS
+01504  A656                        
+01505  A656             ;RANDOMIZER ROUTINE
+01506  A656             
+01507  A656  AE F6 A7   RANDOMIZER LDX RANDPOINTER
+01508  A659  BD 9F A8              LDA LEVELSPEEDINSTR,X
+01509  A65C  8D F5 A7              STA LEVELSPEEDSTORE
+01510  A65F  BD 6D A8              LDA COLINSTR,X
+01511  A662  8D F7 A7              STA COLSTORE
+01512  A665  BD D1 A8              LDA RANDYINSTR,X
+01513  A668  8D F4 A7              STA NEWYPOSSTORE
+01514  A66B  E8                    INX
+01515  A66C  E0 2A                 CPX #42
+01516  A66E  F0 07                 BEQ RESCNCLRRP
+01517  A670  EE F6 A7              INC RANDPOINTER
+01518  A673  20 7C A6              JSR CHECKENEMYPOS
+01519  A676  60                    RTS
+01520  A677             
+01521  A677  A2 00      RESCNCLRRP LDX #$00
+01522  A679  8E F6 A7              STX RANDPOINTER
+01523  A67C  EE F8 A7   CHECKENEMYPOS INC SAUCERPUDEFPOINTER
+01524  A67F  AD F8 A7              LDA SAUCERPUDEFPOINTER
+01525  A682  CD F1 A7              CMP SAUCERPUDEFMAX
+01526  A685  D0 05                 BNE SAUCERPUDEFOK
+01527  A687  A9 00                 LDA #$00
+01528  A689  8D F8 A7              STA SAUCERPUDEFPOINTER
+01529  A68C  AE F8 A7   SAUCERPUDEFOK LDX SAUCERPUDEFPOINTER
+01530  A68F  BD 65 A8              LDA SAUCERPUDEFLO,X
+01531  A692  8D F2 A7              STA SAUCERLOSTORE
+01532  A695  BD 69 A8              LDA SAUCERPUDEFHI,X
+01533  A698  8D F3 A7              STA SAUCERHISTORE
+01534  A69B  20 AB A6              JSR READPOSENEMY1
+01535  A69E  20 DD A6              JSR READPOSENEMY2
+01536  A6A1  20 0F A7              JSR READPOSENEMY3
+01537  A6A4  20 41 A7              JSR READPOSENEMY4
+01538  A6A7  20 73 A7              JSR READPOSENEMY5
+01539  A6AA  60                    RTS
+01540  A6AB             
+01541  A6AB             ;CHECK IF THE ENEMY HAS LEFT THE SCREEN
+01542  A6AB             
+01543  A6AB             READPOSENEMY1 
+01544  A6AB  AD 06 A8              LDA OBJPOS+4
+01545  A6AE  C9 BA                 CMP #$BA
+01546  A6B0  D0 03                 BNE INSCNCLR1
+01547  A6B2                        
+01548  A6B2  4C B6 A6              JMP STORENEXTENEMY1
+01549  A6B5             
+01550  A6B5  60         INSCNCLR1  RTS
+01551  A6B6             
+01552  A6B6             ;STORE THE NEXT ENEMY, BUT PREVENT
+01553  A6B6             ;SPRITE OVERLAPPING OUTSIDE THE
+01554  A6B6             ;GAME SCREEN.
+01555  A6B6             
+01556  A6B6  AD F7 A7   STORENEXTENEMY1 LDA COLSTORE
+01557  A6B9  8D 98 A0              STA COLOUR1+1
+01558  A6BC  AD F2 A7              LDA SAUCERLOSTORE
+01559  A6BF  8D 92 A0              STA FRAME1+1
+01560  A6C2  AD F3 A7              LDA SAUCERHISTORE
+01561  A6C5  8D 93 A0              STA FRAME1+2
+01562  A6C8  AD F4 A7              LDA NEWYPOSSTORE
+01563  A6CB                        
+01564  A6CB  8D 07 A8              STA OBJPOS+5
+01565  A6CE  A9 00                 LDA #$00
+01566  A6D0  8D D3 A7              STA ENEMY1SPEED+1
+01567  A6D3  AD F5 A7              LDA LEVELSPEEDSTORE
+01568  A6D6  8D D2 A7              STA ENEMY1SPEED
+01569  A6D9  8D DC A7              STA ENEMY1SPEEDBACKUP
+01570  A6DC             OVERLAP1   
+01571  A6DC  60                    RTS
+01572  A6DD             READPOSENEMY2 
+01573  A6DD  AD 08 A8              LDA OBJPOS+6
+01574  A6E0  C9 BA                 CMP #$BA
+01575  A6E2  D0 03                 BNE INSCNCLR2
+01576  A6E4                        
+01577  A6E4  4C E8 A6              JMP STORENEXTENEMY2
+01578  A6E7  60         INSCNCLR2  RTS
+01579  A6E8  AD F7 A7   STORENEXTENEMY2 LDA COLSTORE
+01580  A6EB  8D A3 A0              STA COLOUR2+1
+01581  A6EE  AD F2 A7              LDA SAUCERLOSTORE
+01582  A6F1  8D 9D A0              STA FRAME2+1
+01583  A6F4  AD F3 A7              LDA SAUCERHISTORE
+01584  A6F7  8D 9E A0              STA FRAME2+2
+01585  A6FA  A9 00                 LDA #$00
+01586  A6FC  8D D5 A7              STA ENEMY2SPEED+1
+01587  A6FF  AD F5 A7              LDA LEVELSPEEDSTORE
+01588  A702  8D D4 A7              STA ENEMY2SPEED
+01589  A705  8D DE A7              STA ENEMY2SPEEDBACKUP
+01590  A708  AD F4 A7              LDA NEWYPOSSTORE
+01591  A70B                        
+01592  A70B  8D 09 A8              STA OBJPOS+7
+01593  A70E             OVERLAP2   
+01594  A70E  60                    RTS
+01595  A70F             ;
+01596  A70F             READPOSENEMY3 
+01597  A70F  AD 0A A8              LDA OBJPOS+8
+01598  A712  C9 BA                 CMP #$BA
+01599  A714  D0 03                 BNE INSCNCLR3
+01600  A716                        
+01601  A716  4C 1A A7              JMP STORENEXTENEMY3
+01602  A719  60         INSCNCLR3  RTS
+01603  A71A  AD F7 A7   STORENEXTENEMY3 LDA COLSTORE
+01604  A71D  8D AE A0              STA COLOUR3+1
+01605  A720  AD F2 A7              LDA SAUCERLOSTORE
+01606  A723  8D A8 A0              STA FRAME3+1
+01607  A726  AD F3 A7              LDA SAUCERHISTORE
+01608  A729  8D A9 A0              STA FRAME3+2
+01609  A72C  A9 00                 LDA #$00
+01610  A72E  8D D7 A7              STA ENEMY3SPEED+1
+01611  A731  AD F5 A7              LDA LEVELSPEEDSTORE
+01612  A734  8D D6 A7              STA ENEMY3SPEED
+01613  A737  8D E0 A7              STA ENEMY3SPEEDBACKUP
+01614  A73A  AD F4 A7              LDA NEWYPOSSTORE
+01615  A73D                        
+01616  A73D  8D 0B A8              STA OBJPOS+9
+01617  A740  60                    RTS
+01618  A741             
+01619  A741             READPOSENEMY4 
+01620  A741  AD 0C A8              LDA OBJPOS+10
+01621  A744  C9 BA                 CMP #$BA
+01622  A746  D0 03                 BNE INSCNCLR4
+01623  A748                        
+01624  A748  4C 4C A7              JMP STORENEXTENEMY4
+01625  A74B  60         INSCNCLR4  RTS
+01626  A74C             
+01627  A74C             STORENEXTENEMY4 
+01628  A74C  AD F7 A7              LDA COLSTORE
+01629  A74F  8D B9 A0              STA COLOUR4+1
+01630  A752  AD F2 A7              LDA SAUCERLOSTORE
+01631  A755  8D B3 A0              STA FRAME4+1
+01632  A758  AD F3 A7              LDA SAUCERHISTORE
+01633  A75B  8D B4 A0              STA FRAME4+2
+01634  A75E  A9 00                 LDA #$00
+01635  A760  8D D9 A7              STA ENEMY4SPEED+1
+01636  A763                        
+01637  A763  AD F5 A7              LDA LEVELSPEEDSTORE
+01638  A766  8D D8 A7              STA ENEMY4SPEED
+01639  A769  8D E2 A7              STA ENEMY4SPEEDBACKUP
+01640  A76C  AD F4 A7              LDA NEWYPOSSTORE
+01641  A76F                        
+01642  A76F  8D 0D A8              STA OBJPOS+11
+01643  A772  60                    RTS
+01644  A773             
+01645  A773             READPOSENEMY5 
+01646  A773  AD 0E A8              LDA OBJPOS+12
+01647  A776  C9 BA                 CMP #$BA
+01648  A778  D0 26                 BNE INSCNCLR5
+01649  A77A                        
+01650  A77A                        ; JMP STORENEXTENEMY5
+01651  A77A  AD F7 A7              LDA COLSTORE
+01652  A77D  8D C4 A0              STA COLOUR5+1
+01653  A780  AD F2 A7              LDA SAUCERLOSTORE
+01654  A783  8D BE A0              STA FRAME5+1
+01655  A786  AD F3 A7              LDA SAUCERHISTORE
+01656  A789  8D BF A0              STA FRAME5+2
+01657  A78C  A9 00                 LDA #$00
+01658  A78E  8D DB A7              STA ENEMY5SPEED+1
+01659  A791  AD F5 A7              LDA LEVELSPEEDSTORE
+01660  A794  8D DA A7              STA ENEMY5SPEED
+01661  A797  8D E4 A7              STA ENEMY5SPEEDBACKUP
+01662  A79A  AD F4 A7              LDA NEWYPOSSTORE
+01663  A79D                        
+01664  A79D  8D 0F A8              STA OBJPOS+13
+01665  A7A0             
+01666  A7A0  60         INSCNCLR5  RTS
+01667  A7A1             
+01668  A7A1             ;GAME LOOP ROUTINES
+01669  A7A1             
+01670  A7A1  20 34 9E   ROUTINES   JSR EXPAND
+01671  A7A4  20 4D 9E              JSR ANIMSPR
+01672  A7A7  20 93 9E              JSR PLAYERCONTROL
+01673  A7AA  20 2A A0              JSR MOVEBULLET
+01674  A7AD  20 87 A0              JSR TESTENEMIES
+01675  A7B0  20 72 A1              JSR TESTENEMYFIRE
+01676  A7B3  20 81 A2              JSR TESTCOLLISION
+01677  A7B6  20 F1 A0              JSR TESTKAMIKAZE
+01678  A7B9  20 3B A1              JSR TESTEXIT
+01679  A7BC  20 56 A6              JSR RANDOMIZER
+01680  A7BF  60                    RTS
+01681  A7C0             
+01682  A7C0             ;GAME POINTERS
+01683  A7C0             
+01684  A7C0             ;
+01685  A7C0  00 00      RT         BYTE 0,0 ;RASTER TIMER
+01686  A7C2             
+01687  A7C2             ;PLAYER AMOUNT OF LIVES
+01688  A7C2  03         LIVES      BYTE 3
+01689  A7C3             ;SPRITE ANIMATION ROUTINE COUNTERS
+01690  A7C3  00         ANIMDELAY  BYTE 0
+01691  A7C4  00         ANIMPOINTER BYTE 0
+01692  A7C5             ;SPRITE FRAMES SET BY DEFAULT
+01693  A7C5             ;(AT START OF A NEW GAME)
+01694  A7C5  80         PLAYER     BYTE $80
+01695  A7C6  81         BULLET     BYTE $81
+01696  A7C7  85         EXPLOSION  BYTE $85
+01697  A7C8  89         SAUCER1    BYTE $89
+01698  A7C9  8D         SAUCER2    BYTE $8D
+01699  A7CA  91         SAUCER3    BYTE $91
+01700  A7CB  95         SAUCER4    BYTE $95
+01701  A7CC  95         BULLET2    BYTE $95
+01702  A7CD             ;BULLET RANDOM SELECTOR
+01703  A7CD  00         BULL2RND   BYTE 0
+01704  A7CE             ;BULLET TO SAUCER SELECTED
+01705  A7CE  00         BULL2STORE BYTE 0
+01706  A7CF             ;BULLET DEAD (TO ACTIVATE EXPLODING BULLET)
+01707  A7CF  00         BULLETDEAD BYTE 0
+01708  A7D0             ;SPEED TABLE FOR EACH FLYING SAUCER
+01709  A7D0  00         SHOTINTENSITY BYTE 0
+01710  A7D1             ;BULLET FIRE ENABLED (IF COUNTER IS SET)
+01711  A7D1  00         ENEMYBULLETALLOWED BYTE 0
+01712  A7D2             
+01713  A7D2             ;BULLET IS AN EXCEPTION
+01714  A7D2  01 00      ENEMY1SPEED BYTE $01,$00
+01715  A7D4  FE 00      ENEMY2SPEED BYTE $FE,$00
+01716  A7D6  02 00      ENEMY3SPEED BYTE $02,$00
+01717  A7D8  FF 00      ENEMY4SPEED BYTE $FF,$00
+01718  A7DA  03 00      ENEMY5SPEED BYTE $03,$00
+01719  A7DC             ;BACKUP FOR EACH ENEMY, IN ORDER TO
+01720  A7DC             ;AVOID A PRETTY DIFFICULT KAMIKAZE
+01721  A7DC             ;SITUATION
+01722  A7DC  00 00      ENEMY1SPEEDBACKUP BYTE 0,0
+01723  A7DE  00 00      ENEMY2SPEEDBACKUP BYTE 0,0
+01724  A7E0  00 00      ENEMY3SPEEDBACKUP BYTE 0,0
+01725  A7E2  00 00      ENEMY4SPEEDBACKUP BYTE 0,0
+01726  A7E4  00 00      ENEMY5SPEEDBACKUP BYTE 0,0
+01727  A7E6             ;SPRITE EXPLOSION DELAY AND ANIMATION CONTROL
+01728  A7E6  00         EXPLODEDELAY BYTE 0
+01729  A7E7  00         EXPLODEPOINTER BYTE 0
+01730  A7E8  00         PEXPLODEDELAY BYTE 0
+01731  A7E9  00         PEXPLODEPOINTER BYTE 0
+01732  A7EA             ;PLAYER DEATH COUNTER
+01733  A7EA  00         PLAYERDEAD BYTE 0
+01734  A7EB             ;TIME BEFORE SELECT KAMIKAZE WAVE
+01735  A7EB  00         KAMIKAZETIME BYTE 0
+01736  A7EC             ;TIME BEFORE LAUNCHING NEXT BULLET
+01737  A7EC  00         ENEMYBULLETTIME BYTE 0
+01738  A7ED  07         ENEMYBULLETAMOUNT BYTE $07
+01739  A7EE  00         ENEMYBULLETDELAY BYTE 0
+01740  A7EF  32         ENEMYBULLETDELAYAMOUNT BYTE $32
+01741  A7F0             ;SAUCER DEFINTION VALUES - ACCORDING TO
+01742  A7F0             ;LEVEL. THIS WILL BE BASED ON POINTS
+01743  A7F0             ;SCORED PER SHOT/
+01744  A7F0  03         SAUCERPUDEF BYTE 3
+01745  A7F1  03         SAUCERPUDEFMAX BYTE 3
+01746  A7F2             ;RANDOM SAUCER ANIM TYPE SELECTION
+01747  A7F2  C8         SAUCERLOSTORE BYTE <SAUCER1
+01748  A7F3  A7         SAUCERHISTORE BYTE >SAUCER1
+01749  A7F4             ;NEW VERTICAL START POSITION FOR EACH SAUCER
+01750  A7F4  00         NEWYPOSSTORE BYTE 0
+01751  A7F5  00         LEVELSPEEDSTORE BYTE 0
+01752  A7F6             ;RANDOM POINTER
+01753  A7F6  00         RANDPOINTER BYTE 0
+01754  A7F7             ;SAUCER COLOUR SELECTED FROM TABLE
+01755  A7F7  00         COLSTORE   BYTE 0
+01756  A7F8  00         SAUCERPUDEFPOINTER BYTE 0
+01757  A7F9             ;SAUCERTYPEMAX BYTE 3
+01758  A7F9  00         SCOREZONE  BYTE 0
+01759  A7FA             ;NUMBER OF SAUCERS TO SHOOT
+01760  A7FA  00         SHOTCOUNT  BYTE 0
+01761  A7FB             ;THE LEVEL COUNTER
+01762  A7FB  00         LEVELCOUNTER BYTE 0
+01763  A7FC  00         LEVELPOINTER BYTE 0
+01764  A7FD             ;THE AMOUNT OF MISSILES THE PLAYER HAS AT ITS
+01765  A7FD             ;DISPOSAL
+01766  A7FD  00 00      MISSILECOUNTER BYTE 0,0
+01767  A7FF             ;A TIMER DELAY FOR AWARDING BONUS AMMO TO THE PLAYER
+01768  A7FF  00         AMMOBONUSTIME BYTE 0
+01769  A800             ;FIRE BUTTON CHECK (LESS SENSITIVITY)
+01770  A800  00         FIREBUTTON BYTE 0
+01771  A801             ;FIRE BULLET SPEED
+01772  A801  04         ALIENBULLETSPEED BYTE 4
+01773  A802             
+01774  A802             ;SPRITE POSITION TABLES
+01775  A802  00 00 00   OBJPOS     BYTE 0,0,0,0,0,0,0,0
+01776  A80A  00 00 00              BYTE 0,0,0,0,0,0,0,0
+01777  A812             
+01778  A812             ;SPRITE START POSITION TABLE
+01779  A812  58 D0      STARTPOS   BYTE $58,$D0
+01780  A814  00 00                 BYTE $00,$00
+01781  A816  B0 00                 BYTE $B0,$00
+01782  A818  60 00                 BYTE $60,$00
+01783  A81A  70 00                 BYTE $70,$00
+01784  A81C  80 00                 BYTE $80,$00
+01785  A81E  90 00                 BYTE $90,$00
+01786  A820  00 00                 BYTE $00,$00
+01787  A822             
+01788  A822             ;SPRITE START SPEED TABLE
+01789  A822             STARTSPEED 
+01790  A822  01 00                 BYTE $01,$00
+01791  A824  FF 00                 BYTE $FF,$00
+01792  A826  01 00                 BYTE $01,$00
+01793  A828  FF 00                 BYTE $FF,$00
+01794  A82A  01 00                 BYTE $01,$00
+01795  A82C                        
+01796  A82C             ;COLLISION TABLE
+01797  A82C  00 00 00   COLLISION  BYTE 0,0,0,0,0,0,0,0,0
+01798  A835             
+01799  A835             ;SPRITE ANIMATION TABLES
+01800  A835  81 82 83   BULLETFRAME1 BYTE $81,$82,$83,$84
+01801  A839  85 86 87   PEXPLODEINSTR BYTE $85,$86,$87,$88,$87,$86,$85,$85
+01802  A841  85 86 87   EXPLODEINSTR BYTE $85,$86,$87,$88,$87,$86,$85,$85
+01803  A849  89 8A 8B   SAUCER1FRAME BYTE $89,$8A,$8B,$8C
+01804  A84D  8D 8E 8F   SAUCER2FRAME BYTE $8D,$8E,$8F,$90
+01805  A851  91 92 93   SAUCER3FRAME BYTE $91,$92,$93,$94
+01806  A855  95 96 97   SAUCER4FRAME BYTE $95,$96,$97,$96
+01807  A859  98 99 9A   BULLET2FRAME BYTE $98,$99,$9A,$9B
+01808  A85D  85 86 87   EXPLODEFRAME BYTE $85,$86,$87,$88,$88,$88,$87,$86
+01809  A865             
+01810  A865             ;LO+HI BYTE SMALL TABLE FOR SAUCER TYPE SELECTION
+01811  A865  C8 C9 CA   SAUCERPUDEFLO BYTE <SAUCER1,<SAUCER2,<SAUCER3,<SAUCER4
+01812  A869  A7 A7 A7   SAUCERPUDEFHI BYTE >SAUCER1,>SAUCER2,>SAUCER3,>SAUCER4
+01813  A86D             
+01814  A86D             ;COLOUR TABLE FOR SELECTING THE COLOUR OF THE SAUCERS
+01815  A86D             COLINSTR   ;
+01816  A86D  0E 0A 03              BYTE $0E,$0A,$03,$0D,$05,$0C,$0F
+01817  A874  07 0E 04              BYTE $07,$0E,$04,$0C,$08,$0E,$0A
+01818  A87B  03 0E 0D              BYTE $03,$0E,$0D,$0C,$07,$04,$08
+01819  A882  0E 05 0F              BYTE $0E,$05,$0F,$0A,$07,$0D,$0F
+01820  A889  0A 0E 0C              BYTE $0A,$0E,$0C,$0F,$05,$08,$0D
+01821  A890  03 04 05              BYTE $03,$04,$05,$0C,$0F,$0E,$05
+01822  A897  05 07 04              BYTE $05,$07,$04,$0D,$0A,$03,$0F
+01823  A89E  00         COLINSTREND BYTE 0
+01824  A89F             
+01825  A89F             ;SELF-MOD LEVEL SPEED TABLE
+01826  A89F             LEVELSPEEDINSTR ;
+01827  A89F  01 FF 01              BYTE $01,$FF,$01,$01,$FF,$FF,$01
+01828  A8A6  FF 01 FF              BYTE $FF,$01,$FF,$01,$01,$FF,$01
+01829  A8AD  01 FF 01              BYTE $01,$FF,$01,$01,$FF,$01,$FF
+01830  A8B4  FF 01 FF              BYTE $FF,$01,$FF,$01,$FF,$01,$FF
+01831  A8BB  01 FF FF              BYTE $01,$FF,$FF,$01,$01,$FF,$01
+01832  A8C2  FF 01 FF              BYTE $FF,$01,$FF,$01,$FF,$FF,$01
+01833  A8C9  FF 01 FF              BYTE $FF,$01,$FF,$FF,$01,$01,$FF
+01834  A8D0  00         LEVELSPEEDINSTREND BYTE 0
+01835  A8D1             
+01836  A8D1             ;RANDOM START Y-POSITION TABLE FOR THE
+01837  A8D1             ;KILLER SAUCERS
+01838  A8D1             RANDYINSTR ;
+01839  A8D1  40 B0 80              BYTE $40,$B0,$80,$40,$50,$70,$90
+01840  A8D8  A0 80 60              BYTE $A0,$80,$60,$B0,$B0,$70,$40
+01841  A8DF  50 70 40              BYTE $50,$70,$40,$80,$60,$A0,$50
+01842  A8E6  40 70 60              BYTE $40,$70,$60,$50,$90,$B0,$60
+01843  A8ED  A0 80 70              BYTE $A0,$80,$70,$60,$50,$B0,$40
+01844  A8F4  40 90 60              BYTE $40,$90,$60,$50,$80,$50,$40
+01845  A8FB  40 70 70              BYTE $40,$70,$70,$50,$90,$B0,$60
+01846  A902  40         RANDYINSTREND BYTE $40
+01847  A903             
+01848  A903             ;SCORE TABLE
+01849  A903  00 01 02   SCOREINSTR BYTE 0,1,2,3
+01850  A907             SCOREINSTREND ;
+01851  A907             ;SCORE BYTES + HI SCORE
+01852  A907  30 30 30   SCORE      BYTE $30,$30,$30,$30,$30,$30
+01853  A90D  30 30 30   HISCORE    BYTE $30,$30,$30,$30,$30,$30
+01854  A913             ;GAME OVER TEXT
+01855  A913             GOTEXT
+01856  A913  07 01 0D              TEXT 'GAME OVER'
+01857  A91C             GOTEXTEND
+01858  A91C             ;LEVEL COMPLETE TEXT
+01859  A91C  0C 05 16   LCTEXT     TEXT 'LEVEL COMPLETE'
+01860  A92A             LCTEXTEND
+01861  A92A             
+01862  A92A             ;LEVEL PARAMETER TABLES  - ENEMY SPEED
+01863  A92A             
+01864  A92A             LEVEL1SPEEDTABLE 
+01865  A92A  01 FF 01              BYTE $01,$FF,$01,$01,$FF,$FF,$01
+01866  A931  FF 01 FF              BYTE $FF,$01,$FF,$01,$01,$FF,$01
+01867  A938  01 FF 01              BYTE $01,$FF,$01,$01,$FF,$01,$FF
+01868  A93F  FF 01 FF              BYTE $FF,$01,$FF,$01,$FF,$01,$FF
+01869  A946  01 FF FF              BYTE $01,$FF,$FF,$01,$01,$FF,$01
+01870  A94D  FF 01 FF              BYTE $FF,$01,$FF,$01,$FF,$FF,$01
+01871  A954  FF 01 FF              BYTE $FF,$01,$FF,$FF,$01,$01,$FF
+01872  A95B             LEVEL1SPEEDTABLEEND 
+01873  A95B             
+01874  A95B             LEVEL2SPEEDTABLE 
+01875  A95B  01 FF 01              BYTE $01,$FF,$01,$01,$FF,$01,$FF
+01876  A962  FF 01 FF              BYTE $FF,$01,$FF,$01,$FF,$FF,$01
+01877  A969  FF FF FF              BYTE $FF,$FF,$FF,$01,$01,$01,$FF
+01878  A970  01 FF 01              BYTE $01,$FF,$01,$FF,$FF,$01,$FF
+01879  A977  FF 01 FF              BYTE $FF,$01,$FF,$01,$01,$FF,$FF
+01880  A97E  01 FF 01              BYTE $01,$FF,$01,$FF,$01,$FF,$01
+01881  A985  01 FF 01              BYTE $01,$FF,$01,$FF,$01,$FF,$FF
+01882  A98C             LEVEL2SPEEDTABLEEND 
+01883  A98C             
+01884  A98C             LEVEL3SPEEDTABLE 
+01885  A98C  01 01 FF              BYTE $01,$01,$FF,$FF,$02,$01,$FF
+01886  A993  01 01 FE              BYTE $01,$01,$FE,$01,$FF,$01,$FF
+01887  A99A  01 02 FF              BYTE $01,$02,$FF,$FE,$01,$02,$01
+01888  A9A1  01 01 FE              BYTE $01,$01,$FE,$01,$FE,$FF,$01
+01889  A9A8  01 01 FF              BYTE $01,$01,$FF,$01,$FF,$01,$FE
+01890  A9AF  01 01 FE              BYTE $01,$01,$FE,$01,$FF,$01,$FE
+01891  A9B6  FF 01 FF              BYTE $FF,$01,$FF,$02,$FF,$01,$FE
+01892  A9BD             LEVEL3SPEEDTABLEEND 
+01893  A9BD             
+01894  A9BD             LEVEL4SPEEDTABLE 
+01895  A9BD  01 02 FE              BYTE $01,$02,$FE,$01,$01,$FF,$01
+01896  A9C4  01 FE FF              BYTE $01,$FE,$FF,$FF,$01,$01,$FF
+01897  A9CB  FE 02 01              BYTE $FE,$02,$01,$01,$FF,$FF,$01
+01898  A9D2  01 FE FF              BYTE $01,$FE,$FF,$FF,$02,$FE,$02
+01899  A9D9  01 FF 01              BYTE $01,$FF,$01,$FE,$01,$01,$FF
+01900  A9E0  01 FF 02              BYTE $01,$FF,$02,$FE,$01,$FF,$01
+01901  A9E7  01 FF 01              BYTE $01,$FF,$01,$FF,$01,$FF,$01
+01902  A9EE             LEVEL4SPEEDTABLEEND 
+01903  A9EE             
+01904  A9EE             LEVEL5SPEEDTABLE 
+01905  A9EE  01 FE 01              BYTE $01,$FE,$01,$02,$FE,$FF,$01
+01906  A9F5  FE 01 01              BYTE $FE,$01,$01,$FF,$02,$01,$FF
+01907  A9FC  02 FF FE              BYTE $02,$FF,$FE,$02,$01,$FE,$01
+01908  AA03  FF FE FE              BYTE $FF,$FE,$FE,$02,$02,$FF,$01
+01909  AA0A  FF FE 02              BYTE $FF,$FE,$02,$FF,$02,$FF,$01
+01910  AA11  FF 02 FE              BYTE $FF,$02,$FE,$01,$FF,$01,$FE
+01911  AA18  FF 01 FE              BYTE $FF,$01,$FE,$FE,$02,$02,$02
+01912  AA1F             LEVEL5SPEEDTABLEEND 
+01913  AA1F             
+01914  AA1F             LEVEL6SPEEDTABLE 
+01915  AA1F  02 FE FE              BYTE $02,$FE,$FE,$02,$01,$FF,$02
+01916  AA26  FE 02 02              BYTE $FE,$02,$02,$FE,$01,$FF,$02
+01917  AA2D  FE FE 02              BYTE $FE,$FE,$02,$01,$FF,$01,$FF
+01918  AA34  FE 02 FE              BYTE $FE,$02,$FE,$01,$FF,$01,$FE
+01919  AA3B  FE 02 01              BYTE $FE,$02,$01,$FE,$FF,$FE,$FE
+01920  AA42  02 FE 01              BYTE $02,$FE,$01,$FE,$FF,$02,$01
+01921  AA49  02 02 FE              BYTE $02,$02,$FE,$01,$FF,$02,$FE
+01922  AA50             LEVEL6SPEEDTABLEEND 
+01923  AA50             
+01924  AA50             LEVEL7SPEEDTABLE 
+01925  AA50  02 FE 02              BYTE $02,$FE,$02,$02,$FE,$FE,$02
+01926  AA57  02 FE 02              BYTE $02,$FE,$02,$FE,$FE,$02,$02
+01927  AA5E  02 02 FE              BYTE $02,$02,$FE,$02,$02,$FE,$FE
+01928  AA65  FE 02 FE              BYTE $FE,$02,$FE,$FE,$02,$02,$FE
+01929  AA6C  02 02 FE              BYTE $02,$02,$FE,$02,$FE,$FE,$02
+01930  AA73  02 FE 02              BYTE $02,$FE,$02,$FE,$02,$02,$FE
+01931  AA7A  FE 02 02              BYTE $FE,$02,$02,$FE,$02,$FE,$02
+01932  AA81             LEVEL7SPEEDTABLEEND 
+01933  AA81             
+01934  AA81             LEVEL8SPEEDTABLE 
+01935  AA81  02 FE 02              BYTE $02,$FE,$02,$02,$FE,$02,$FD
+01936  AA88  03 FD 02              BYTE $03,$FD,$02,$03,$02,$02,$03
+01937  AA8F  02 FD 03              BYTE $02,$FD,$03,$02,$FE,$02,$FE
+01938  AA96  FD 03 FD              BYTE $FD,$03,$FD,$03,$02,$FE,$03
+01939  AA9D  FD 03 FD              BYTE $FD,$03,$FD,$02,$FE,$03,$FD
+01940  AAA4  03 02 FE              BYTE $03,$02,$FE,$03,$02,$03,$FE
+01941  AAAB  FE 03 03              BYTE $FE,$03,$03,$FD,$FD,$03,$FD
+01942  AAB2             LEVEL8SPEEDTABLEEND 
+01943  AAB2             
+01944  AAB2             ;LEVEL TABLES FOR LEVEL SPEED (LOW/HI BYTE POINTERS)
+01945  AAB2             
+01946  AAB2  2A         LEVELSPEEDTABLELOW BYTE <LEVEL1SPEEDTABLE
+01947  AAB3  5B                    BYTE <LEVEL2SPEEDTABLE
+01948  AAB4  8C                    BYTE <LEVEL3SPEEDTABLE
+01949  AAB5  BD                    BYTE <LEVEL4SPEEDTABLE
+01950  AAB6  EE                    BYTE <LEVEL5SPEEDTABLE
+01951  AAB7  1F                    BYTE <LEVEL6SPEEDTABLE
+01952  AAB8  50                    BYTE <LEVEL7SPEEDTABLE
+01953  AAB9  81                    BYTE <LEVEL8SPEEDTABLE
+01954  AABA             LEVELSPEEDLOWTABLEEND 
+01955  AABA             
+01956  AABA  A9         LEVELSPEEDTABLEHI BYTE >LEVEL1SPEEDTABLE
+01957  AABB  A9                    BYTE >LEVEL2SPEEDTABLE
+01958  AABC  A9                    BYTE >LEVEL3SPEEDTABLE
+01959  AABD  A9                    BYTE >LEVEL4SPEEDTABLE
+01960  AABE  A9                    BYTE >LEVEL5SPEEDTABLE
+01961  AABF  AA                    BYTE >LEVEL6SPEEDTABLE
+01962  AAC0  AA                    BYTE >LEVEL7SPEEDTABLE
+01963  AAC1  AA                    BYTE >LEVEL8SPEEDTABLE
+01964  AAC2             LEVELSPEEDTABLEHIEND 
+01965  AAC2             
+01966  AAC2             ;LEVEL ENEMY FIRING INTENSITY (SHOULD INCREASE EVERY
+01967  AAC2             ;LEVEL.
+01968  AAC2             
+01969  AAC2             FIREINTENSITY 
+01970  AAC2  08 07 06              BYTE $08,$07,$06,$05,$04,$03,$02,$01
+01971  AACA             FIREINTENSITYEND 
+01972  AACA             
+01973  AACA             FIRESPEEDTABLE 
+01974  AACA  04 04 04              BYTE $04,$04,$04,$04,$06,$06,$06,$08
+01975  AAD2             FIRESPEEDTABLEEND 
+01976  AAD2             
+01977  AAD2             
+01978  AAD2  00                    BYTE 0
+01979  AAD3             
+01980  AAD3             ENDSCREENTEXT 
+01981  AAD3  20 20 20              TEXT '      C O N G R A T U L A T I O N S     '
+01982  AAFB  20 20 20              TEXT '   YOU HAVE DEFEATED THE ALIEN FORCES   '
+01983  AB23  20 20 20              TEXT '   ONCE AGAIN. HOWEVER, A NEW FLEET OF  '
+01984  AB4B  20 20 20              TEXT '   KILLER SAUCERS ARE COMING.           '
+01985  AB73  20 20 20              TEXT '     PRESS FIRE TO CONTINUE PLAYING     '
+01986  AB9B             
+01987  AB9B             ;-------------------------
+01988  AB9B             ;TITLE SCREEN CODE
+01989  AB9B             ;-------------------------
+01990  AB9B             
+01991  AB9B  78                    SEI
+01992  AB9C  A2 31                 LDX #$31
+01993  AB9E  A0 EA                 LDY #$EA
+01994  ABA0  A9 81                 LDA #$81
+01995  ABA2  8D 0D DC              STA $DC0D
+01996  ABA5  8D 0D DD              STA $DD0D
+01997  ABA8  8E 14 03              STX $0314
+01998  ABAB  8C 15 03              STY $0315
+01999  ABAE  A9 00                 LDA #$00
+02000  ABB0  8D 19 D0              STA $D019
+02001  ABB3  8D 1A D0              STA $D01A
+02002  ABB6  A2 00                 LDX #$00
+02003  ABB8  A9 00      NOSOUND    LDA #$00
+02004  ABBA  9D 00 D4              STA $D400,X
+02005  ABBD  E8                    INX
+02006  ABBE  E0 18                 CPX #$18
+02007  ABC0  D0 F6                 BNE NOSOUND
+02008  ABC2  A2 00                 LDX #0
+02009  ABC4  8E 96 AD              STX TCOLPOINTER
+02010  ABC7  A9 00                 LDA #$00
+02011  ABC9  8D 20 D0              STA $D020
+02012  ABCC  8D 21 D0              STA $D021
+02013  ABCF  A9 1E                 LDA #$1E
+02014  ABD1  8D 18 D0              STA $D018
+02015  ABD4  A9 08                 LDA #$08
+02016  ABD6  8D 16 D0              STA $D016
+02017  ABD9  A2 00                 LDX #$00
+02018  ABDB  BD 2A AE   DRAWTS2    LDA TITLESCREENMAP,X
+02019  ABDE  9D 00 04              STA $0400,X
+02020  ABE1  BD 2A AF              LDA TITLESCREENMAP+$100,X
+02021  ABE4  9D 00 05              STA $0500,X
+02022  ABE7  BD 2A B0              LDA TITLESCREENMAP+$200,X
+02023  ABEA  9D 00 06              STA $0600,X
+02024  ABED  BD 12 B1              LDA TITLESCREENMAP+$2E8,X
+02025  ABF0  9D E8 06              STA $06E8,X
+02026  ABF3  A9 00                 LDA #$00
+02027  ABF5  9D 00 D8              STA $D800,X
+02028  ABF8  9D 00 D9              STA $D900,X
+02029  ABFB  9D 00 DA              STA $DA00,X
+02030  ABFE  9D E8 DA              STA $DAE8,X
+02031  AC01  E8                    INX
+02032  AC02  D0 D7                 BNE DRAWTS2
+02033  AC04                        
+02034  AC04  A9 1B                 LDA #$1B
+02035  AC06  8D 11 D0              STA $D011
+02036  AC09  A9 12                 LDA #<SCROLLTEXT
+02037  AC0B  8D 07 AD              STA MESSREAD+1
+02038  AC0E  A9 B2                 LDA #>SCROLLTEXT
+02039  AC10  8D 08 AD              STA MESSREAD+2
+02040  AC13  A2 71                 LDX #<TIRQ
+02041  AC15  A0 AC                 LDY #>TIRQ
+02042  AC17  A9 7F                 LDA #$7F
+02043  AC19  8E 14 03              STX $0314
+02044  AC1C  8C 15 03              STY $0315
+02045  AC1F  8D 0D DC              STA $DC0D
+02046  AC22  A9 36                 LDA #$36
+02047  AC24  8D 12 D0              STA $D012
+02048  AC27  A9 1B                 LDA #$1B
+02049  AC29  8D 11 D0              STA $D011
+02050  AC2C  A9 01                 LDA #$01
+02051  AC2E  8D 1A D0              STA $D01A
+02052  AC31  A9 00                 LDA #$00
+02053  AC33  20 00 90              JSR MUSICINIT
+02054  AC36  A9 00                 LDA #0
+02055  AC38  8D 00 A8              STA FIREBUTTON
+02056  AC3B  58                    CLI
+02057  AC3C             TITLELOOP
+02058  AC3C  A9 00                 LDA #0
+02059  AC3E  8D C0 A7              STA RT
+02060  AC41  CD C0 A7              CMP RT
+02061  AC44  F0 FB                 BEQ *-3
+02062  AC46  20 EC AC              JSR DOSCROLL
+02063  AC49  20 26 AD              JSR COLOURSCROLL
+02064  AC4C  AD 00 DC              LDA $DC00
+02065  AC4F  4A                    LSR
+02066  AC50  4A                    LSR
+02067  AC51  4A                    LSR
+02068  AC52  4A                    LSR
+02069  AC53  4A                    LSR
+02070  AC54  2C 00 A8              BIT FIREBUTTON
+02071  AC57  6E 00 A8              ROR FIREBUTTON
+02072  AC5A  30 E0                 BMI TITLELOOP
+02073  AC5C  50 DE                 BVC TITLELOOP
+02074  AC5E                        
+02075  AC5E  4C 00 40              JMP $4000 ;GAME
+02076  AC61  00 00 00              BYTE 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+02077  AC71                        
+02078  AC71  EE 19 D0   TIRQ       INC $D019
+02079  AC74  A9 42                 LDA #$42
+02080  AC76  8D 12 D0              STA $D012
+02081  AC79  AD 95 AD              LDA XPOS
+02082  AC7C  8D 16 D0              STA $D016
+02083  AC7F  A9 01                 LDA #1
+02084  AC81  8D C0 A7              STA RT
+02085  AC84  20 D1 AC              JSR MUSICPLAYER
+02086  AC87  A9 08                 LDA #$08
+02087  AC89  8D 16 D0              STA $D016
+02088  AC8C  A2 99                 LDX #<TIRQ2
+02089  AC8E  A0 AC                 LDY #>TIRQ2
+02090  AC90  8E 14 03              STX $0314
+02091  AC93  8C 15 03              STY $0315
+02092  AC96  4C 7E EA              JMP $EA7E
+02093  AC99  EE 19 D0   TIRQ2      INC $D019
+02094  AC9C                        
+02095  AC9C  AC 12 D0              LDY $D012
+02096  AC9F             
+02097  AC9F  A2 59                 LDX #RASTERTABLEEND-RASTERTABLE
+02098  ACA1             RASLOOP
+02099  ACA1  BD D0 AD              LDA RASTERTABLE,X
+02100  ACA4  CC 12 D0              CPY $D012
+02101  ACA7  F0 FB                 BEQ *-3
+02102  ACA9  8D 21 D0              STA $D021
+02103  ACAC  C8                    INY
+02104  ACAD  CA                    DEX
+02105  ACAE  10 F1                 BPL RASLOOP
+02106  ACB0  A2 08                 LDX #$08
+02107  ACB2  CA                    DEX
+02108  ACB3  D0 FD                 BNE *-1
+02109  ACB5  A9 00                 LDA #0
+02110  ACB7                        
+02111  ACB7  8D 21 D0              STA $D021
+02112  ACBA  A9 EA                 LDA #$EA
+02113  ACBC  8D 12 D0              STA $D012
+02114  ACBF  A9 08                 LDA #$08
+02115  ACC1  8D 16 D0              STA $D016
+02116  ACC4  A2 71                 LDX #<TIRQ
+02117  ACC6  A0 AC                 LDY #>TIRQ
+02118  ACC8  8E 14 03              STX $0314
+02119  ACCB  8C 15 03              STY $0315
+02120  ACCE  4C 7E EA              JMP $EA7E
+02121  ACD1             MUSICPLAYER 
+02122  ACD1  AD 93 AD              LDA SYSTEM
+02123  ACD4  C9 01                 CMP #1
+02124  ACD6  F0 0A                 BEQ PAL
+02125  ACD8  EE 94 AD              INC NTSCTIMER
+02126  ACDB  AD 94 AD              LDA NTSCTIMER
+02127  ACDE  C9 06                 CMP #6
+02128  ACE0  F0 04                 BEQ RESETNTSC
+02129  ACE2  20 06 90   PAL        JSR MUSICPLAY
+02130  ACE5  60                    RTS
+02131  ACE6             RESETNTSC  
+02132  ACE6  A9 00                 LDA #0
+02133  ACE8  8D 94 AD              STA NTSCTIMER
+02134  ACEB  60                    RTS
+02135  ACEC                        
+02136  ACEC  AD 95 AD   DOSCROLL   LDA XPOS
+02137  ACEF  38                    SEC
+02138  ACF0  E9 02                 SBC #2
+02139  ACF2  29 07                 AND #7
+02140  ACF4  8D 95 AD              STA XPOS
+02141  ACF7  B0 2C                 BCS EXITSCROLL
+02142  ACF9  A2 00                 LDX #$00
+02143  ACFB             SCROLLOOP  
+02144  ACFB  BD C1 07              LDA $07C1,X
+02145  ACFE  9D C0 07              STA $07C0,X
+02146  AD01  E8                    INX
+02147  AD02  E0 27                 CPX #$27
+02148  AD04  D0 F5                 BNE SCROLLOOP
+02149  AD06  AD 12 B2   MESSREAD   LDA SCROLLTEXT
+02150  AD09  C9 00                 CMP #$00
+02151  AD0B  D0 0D                 BNE STORECHAR
+02152  AD0D  A9 12                 LDA #<SCROLLTEXT
+02153  AD0F  8D 07 AD              STA MESSREAD+1
+02154  AD12  A9 B2                 LDA #>SCROLLTEXT
+02155  AD14  8D 08 AD              STA MESSREAD+2
+02156  AD17  4C 06 AD              JMP MESSREAD
+02157  AD1A             STORECHAR  
+02158  AD1A  8D E7 07              STA $07E7
+02159  AD1D  EE 07 AD              INC MESSREAD+1
+02160  AD20  D0 03                 BNE EXITSCROLL
+02161  AD22  EE 08 AD              INC MESSREAD+2
+02162  AD25             EXITSCROLL 
+02163  AD25  60                    RTS
+02164  AD26             COLOURSCROLL 
+02165  AD26  AD 97 AD              LDA TCOLDELAY
+02166  AD29  C9 02                 CMP #2
+02167  AD2B  F0 04                 BEQ TCOLDELOK
+02168  AD2D  EE 97 AD              INC TCOLDELAY
+02169  AD30  60                    RTS
+02170  AD31             TCOLDELOK
+02171  AD31  A9 00                 LDA #0
+02172  AD33  8D 97 AD              STA TCOLDELAY
+02173  AD36  AE 96 AD              LDX TCOLPOINTER
+02174  AD39  BD 98 AD              LDA TITLECOLOURTABLE1,X
+02175  AD3C  8D 7F DA              STA $DA7F
+02176  AD3F  BD A0 AD              LDA TITLECOLOURTABLE2,X
+02177  AD42  8D D0 DA              STA $DAD0
+02178  AD45  BD A8 AD              LDA TITLECOLOURTABLE3,X
+02179  AD48  8D 6F DB              STA $DB6F
+02180  AD4B  BD B0 AD              LDA TITLECOLOURTABLE4,X
+02181  AD4E  8D C0 DB              STA $DBC0
+02182  AD51  BD B8 AD              LDA TITLECOLOURTABLE5,X
+02183  AD54  8D 00 D8              STA $D800
+02184  AD57  E8                    INX
+02185  AD58  E0 08                 CPX #8
+02186  AD5A  F0 07                 BEQ LOOPFLASH
+02187  AD5C  EE 96 AD              INC TCOLPOINTER
+02188  AD5F  4C 68 AD              JMP SETCHARFLASH
+02189  AD62  60                    RTS
+02190  AD63             LOOPFLASH
+02191  AD63  A2 00                 LDX #0
+02192  AD65  8E 96 AD              STX TCOLPOINTER
+02193  AD68             SETCHARFLASH 
+02194  AD68  A2 00                 LDX #$00
+02195  AD6A  BD 59 DA   PULLBACK   LDA $DA59,X
+02196  AD6D  9D 58 DA              STA $DA58,X
+02197  AD70  BD 49 DB              LDA $DB49,X
+02198  AD73  9D 48 DB              STA $DB48,X
+02199  AD76  AD C0 DB              LDA $DBC0
+02200  AD79  9D C0 DB              STA $DBC0,X
+02201  AD7C  E8                    INX
+02202  AD7D  E0 28                 CPX #$28
+02203  AD7F  D0 E9                 BNE PULLBACK
+02204  AD81  A2 27                 LDX #$27
+02205  AD83  BD CF DA   PUSHFWD    LDA $DAD0-1,X
+02206  AD86  9D D0 DA              STA $DAD0,X
+02207  AD89                        
+02208  AD89  BD FF D7              LDA $D800-1,X
+02209  AD8C  9D 00 D8              STA $D800,X
+02210  AD8F  CA                    DEX
+02211  AD90  10 F1                 BPL PUSHFWD
+02212  AD92  60                    RTS
+02213  AD93             
+02214  AD93  00         SYSTEM     BYTE 0
+02215  AD94  00         NTSCTIMER  BYTE 0
+02216  AD95  00         XPOS       BYTE 0
+02217  AD96  00         TCOLPOINTER BYTE 0
+02218  AD97  00         TCOLDELAY  BYTE 0
+02219  AD98             
+02220  AD98             TITLECOLOURTABLE1 
+02221  AD98  06 0E 03              BYTE $06,$0E,$03,$01,$03,$0E,$06,$00
+02222  ADA0             TITLECOLOURTABLE2 
+02223  ADA0  00 02 0A              BYTE $00,$02,$0A,$07,$01,$07,$0A,$02
+02224  ADA8             TITLECOLOURTABLE3 
+02225  ADA8  01 0D 05              BYTE $01,$0D,$05,$09,$00,$09,$05,$0D
+02226  ADB0             TITLECOLOURTABLE4 
+02227  ADB0  0B 0C 0F              BYTE $0B,$0C,$0F,$01,$0F,$0C,$0B,$00
+02228  ADB8             TITLECOLOURTABLE5 
+02229  ADB8  09 00 09              BYTE $09,$00,$09,$08,$07,$01,$07,$08
+02230  ADC0             
+02231  ADC0  00 00 00              BYTE 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+02232  ADD0             
+02233  ADD0             RASTERTABLE 
+02234  ADD0  00 00 09              BYTE $00,$00,$09,$00,$09,$02,$08,$0A,$07,$01
+02235  ADDA  07 01 01              BYTE $07,$01,$01,$01,$01,$01
+02236  ADE0  01 01 01              BYTE $01,$01,$01,$01,$01,$01,$01,$01
+02237  ADE8  01 01 01              BYTE $01,$01,$01,$01,$01,$01,$01,$01
+02238  ADF0  01 01 01              BYTE $01,$01,$01,$01,$01,$01,$01,$01
+02239  ADF8  01 01 01              BYTE $01,$01,$01,$01,$01,$01,$01,$01,$01
+02240  AE01  01 01 01              BYTE $01,$01,$01,$01,$01,$01,$01,$01
+02241  AE09  01 01 01              BYTE $01,$01,$01,$01,$01,$01,$01
+02242  AE10  01 01 01              BYTE $01,$01,$01,$01,$01,$01,$01,$01
+02243  AE18  01 01 01              BYTE $01,$01,$01,$01,$01,$01,$01,$01
+02244  AE20                        
+02245  AE20  03 01 03              BYTE $03,$01,$03,$0E,$04,$06,$00,$06,$00
+02246  AE29             RASTERTABLEEND 
+02247  AE29  00                    BYTE 0
+02248  AE2A             TITLESCREENMAP 
+02249  AE2A                        INCBIN "BIN/TITLESCREEN.BIN"
+02250  B212             
+02251  B212  20 2E 2E   SCROLLTEXT TEXT ' ... WELCOME TO KILLER SAUCERS ...   PROGRAMMING, '
+02252  B244  07 12 01              TEXT 'GRAPHICS, SOUND EFFECTS AND MUSIC BY RICHARD BAYLISS '
+02253  B279  2E 2E 2E              TEXT '...   COPYRIGHT (C) 2020 THE NEW DIMENSION ...   '
+02254  B2AA                        
+02255  B2AA  02 12 05              TEXT 'BREAKING NEWS ALERT: THERE HAS BEEN A MAJOR SIGHTING OF '
+02256  B2E2  04 05 01              TEXT 'DEADLY FLYING SAUCERS WHICH HAVE APPROACHED OUR CYBER '
+02257  B318  03 09 14              TEXT 'CITY ...   THEY THREATEN TO TAKE OVER US ...   '
+02258  B347  19 0F 15              TEXT 'YOU CAN CONTROL YOUR GROUND VEHICLE BY USING A JOYSTICK '
+02259  B37F  10 0C 15              TEXT 'PLUGGED INTO PORT 2 AND DO BATTLE AGAINST THE ALIENS ...   '
+02260  B3BA  14 0F 20              TEXT 'TO COMPLETE EACH LEVEL, YOU MUST BLAST 50 ALIENS OUT OF '
+02261  B3F2  19 0F 15              TEXT 'YOUR 99 BULLETS ...   IF YOU RUN OUT OF BULLETS, GET HIT '
+02262  B42B  02 19 20              TEXT 'BY A FLYING SAUCER OR ITS BOMB, YOU WILL LOSE A LIFE '
+02263  B460  01 0E 04              TEXT 'AND HAVE TO START THE LEVEL YOU ARE ON ALL OVER AGAIN ...   '
+02264  B49C  14 08 05              TEXT 'THERE ARE 8 LEVELS IN TOTAL ...   THE GAME WILL GET EVEN '
+02265  B4D5  08 01 12              TEXT 'HARDER AS EACH LEVEL PROGRESSES ...   THE BULLET COUNT IS '
+02266  B50F  01 17 01              TEXT 'AWARDED FOR EVERY LEVEL COMPLETE ...   YOUR BULLETS ARE ALL '
+02267  B54B  12 05 13              TEXT 'RESTORED EVERY TIME A LEVEL IS COMPLETE, OR YOU LOSE A LIFE '
+02268  B587  2E 2E 2E              TEXT '...   THAT IS THE INSTRUCTIONS OUT OF THE WAY ...   '
+02269  B5BB  09 20 17              TEXT 'I WANT TO TELL YOU A BIT ABOUT HOW THIS GAME CAME TO LIGHT ...   '
+02270  B5FC  01 20 03              TEXT 'A COUPLE OF MONTHS AGO I STARTED THIS PROJECT AS PART OF THE '
+02271  B639  03 0F 0D              TEXT 'COMMODORE FORMAT POWER PACK CHALLENGE ON THEC64, WHERE I '
+02272  B672  13 05 0C              TEXT 'SELECTED A SERIES OF APPLICATIONS THAT FEATURED ON THE '
+02273  B6A9  0D 01 07              TEXT 'MAGAZINE COVER TAPES ...   THE CHOSEN PROGRAMS WERE F.R.O.S.T '
+02274  B6E7  28 06 0F              TEXT '(FORMATS REALLY ORIGINAL SPRITE THINGY), FONT EDITOR V3, '
+02275  B720  01 0E 04              TEXT 'AND 6510 ASSEMBLER ...   MUSIC WAS MADE IN FUTURE COMPOSER ...   '
+02276  B761  13 01 04              TEXT 'SADLY THE CHALLENGE DID NOT TURN OUT '
+02277  B786  17 05 0C              TEXT 'WELL, DUE PROBLEMS WITH MEMORY LIMITATIONS IN 6510 ASSEMBLER ...   '
+02278  B7C9  14 08 01              TEXT 'THAT DID NOT MEAN THAT THE GAME PROJECT WAS CANNED ...   '
+02279  B802  09 20 05              TEXT 'I EXPORTED THIS GAME PROJECT TO CBMPRGSTUDIO AND '
+02280  B833  06 09 0E              TEXT 'FINISHED OFF THE OVERALL PRODUCTION ...   IF YOU HAVE THE .TAP '
+02281  B872  16 05 12              TEXT 'VERSION OF THIS GAME, YOU WILL HAVE NOTICED THAT I USED '
+02282  B8AA  14 08 05              TEXT 'THE CF LOADER MAKER UTILITY ...   I HOPE YOU LIKE THE OVERALL '
+02283  B8E8  12 05 13              TEXT 'RESULT ...   THIS GAME WAS MADE TO FEEL LIKE A TYPE IN CREATION '
+02284  B928  02 15 14              TEXT 'BUT IT WAS GIVEN THE OVERHAUL ...   WELL, THAT IS ALL '
+02285  B95E  06 0F 12              TEXT 'FOR NOW AND THIS IS MY LAST EVER GAME PRODUCTION FOR 2020 ...   '
+02286  B99E  05 18 10              TEXT 'EXPECT TO SEE SOME MORE NEW GAMES FROM ME IN 2021 ...   GOODBYE '
+02287  B9DE  06 0F 12              TEXT 'FOR NOW ...                                               '
+02288  BA18  00                    BYTE 0
+02289  BA19             
+02290  BA19                        
+02291  BA19             
+
+******* 316 Label(s) *******
+addscore = $A4CE 
+alienbulletspeed = $A801 
+ammobonustime = $A7FF 
+aniloop = $9D9B 
+aniloop2 = $9DA8 
+animdelay = $A7C3 
+animexit = $9E8D 
+animlazer1 = $9D99 
+animlazer2 = $9DA6 
+animpixel1 = $9DB3 
+animpointer = $A7C4 
+animspr = $9E4D 
+bonusmcountok = $A5BA 
+bull2player = $A3B4 
+bull2rnd = $A7CD 
+bull2store = $A7CE 
+bullcoll = $A2C7 
+bullet = $A7C6 
+bullet2 = $A7CC 
+bullet2frame = $A859 
+bulletdead = $A7CF 
+bulletframe1 = $A835 
+chargetoplayer = $A126 
+checkenemypos = $A67C 
+colinstr = $A86D 
+colinstrend = $A89E 
+collision = $A82C 
+colloop = $A36F 
+colour1 = $A097 
+colour2 = $A0A2 
+colour3 = $A0AD 
+colour4 = $A0B8 
+colour5 = $A0C3 
+colourscroll = $AD26 
+colrize = $9D4B 
+colstore = $A7F7 
+copyexpframe = $A508 
+copygotext = $9F02 
+copylctext = $A5DC 
+copystartspeed = $9C05 
+countdownloop = $A57E 
+ddddd = $0821 
+destroyall = $A52B 
+doanim = $9E58 
+dobonus = $A58E 
+dolcexplosion = $A536 
+doscroll = $ACEC 
+drawscr = $9C88 
+drawts2 = $ABDB 
+endscreentext = $AAD3 
+enemy1nodie = $A40E 
+enemy1speed = $A7D2 
+enemy1speedbackup = $A7DC 
+enemy1tobull = $A2D7 
+enemy2anim = $A09C 
+enemy2nodie = $A43C 
+enemy2speed = $A7D4 
+enemy2speedbackup = $A7DE 
+enemy2tobull = $A2F5 
+enemy3nodie = $A46A 
+enemy3speed = $A7D6 
+enemy3speedbackup = $A7E0 
+enemy3tobull = $A313 
+enemy4nodie = $A498 
+enemy4speed = $A7D8 
+enemy4speedbackup = $A7E2 
+enemy4tobull = $A331 
+enemy5nodie = $A4C6 
+enemy5speed = $A7DA 
+enemy5speedbackup = $A7E4 
+enemy5tobull = $A34F 
+enemyanim = $A091 
+enemybullet = $A15A 
+enemybulletallowed = $A7D1 
+enemybulletamount = $A7ED 
+enemybulletdelay = $A7EE 
+enemybulletdelayamount = $A7EF 
+enemybullettime = $A7EC 
+exitscroll = $AD25 
+exloop = $9E36 
+expand = $9E34 
+explodebullet = $A04F 
+explodedelay = $A7E6 
+explodeframe = $A85D 
+explodeinstr = $A841 
+explodeok = $A05F 
+explodepointer = $A7E7 
+explosion = $A7C7 
+fire = $9F95 
+firebutton = $A800 
+fireintensity = $AAC2 
+fireintensityend = $AACA 
+firespeedtable = $AACA 
+firespeedtableend = $AAD2 
+frame1 = $A091 
+frame2 = $A09C 
+frame3 = $A0A7 
+frame4 = $A0B2 
+frame5 = $A0BD 
+gameloop = $9E24 
+gameover = $9EFB 
+gameoverloop = $9F54 
+GameRestart = $9C74 
+gotext = $A913 
+gotextend = $A91C 
+hiscore = $A90D 
+ignorekilled = $A3B3 
+initbullexp = $A4C7 
+inscene = $A16E 
+inscnclr = $A153 
+inscnclr1 = $A6B5 
+inscnclr2 = $A6E7 
+inscnclr3 = $A719 
+inscnclr4 = $A74B 
+inscnclr5 = $A7A0 
+irq = $9D73 
+kamikazeon = $A11B 
+kamikazetime = $A7EB 
+kamiloop = $A0FA 
+kcheck = $A104 
+killplayer = $9E9D 
+killtestenemy1 = $A3E5 
+killtestenemy2 = $A40F 
+killtestenemy3 = $A43D 
+killtestenemy4 = $A46B 
+killtestenemy5 = $A499 
+lcexplodeend = $A576 
+lcloop = $A518 
+lctext = $A91C 
+lctextend = $A92A 
+leaveloop = $A13D 
+left = $9F69 
+leftok = $9F7C 
+level1speedtable = $A92A 
+level1speedtableend = $A95B 
+level2speedtable = $A95B 
+level2speedtableend = $A98C 
+level3speedtable = $A98C 
+level3speedtableend = $A9BD 
+level4speedtable = $A9BD 
+level4speedtableend = $A9EE 
+level5speedtable = $A9EE 
+level5speedtableend = $AA1F 
+level6speedtable = $AA1F 
+level6speedtableend = $AA50 
+level7speedtable = $AA50 
+level7speedtableend = $AA81 
+level8speedtable = $AA81 
+level8speedtableend = $AAB2 
+levelcomplete = $A4FC 
+levelcounter = $A7FB 
+levelpointer = $A7FC 
+levelspeedinstr = $A89F 
+levelspeedinstrend = $A8D0 
+levelspeedlowtableend = $AABA 
+levelspeedstore = $A7F5 
+levelspeedtablehi = $AABA 
+levelspeedtablehiend = $AAC2 
+levelspeedtablelow = $AAB2 
+lives = $A7C2 
+loopflash = $AD63 
+loopscore = $A62A 
+loselive = $9EC4 
+makenewhi = $9F43 
+masterpanel = $A643 
+messread = $AD06 
+missilecounter = $A7FD 
+missilecountok = $9FE4 
+missok = $A01D 
+mkdat = $9BC8 
+movebullet = $A02A 
+movefrominstr = $A0D4 
+moveplayer = $9F69 
+movloop = $A0D6 
+musicplayer = $ACD1 
+newyposstore = $A7F4 
+nextlevel = $9C4C 
+nobombsfx = $A280 
+nohiscore = $9F4F 
+nojoy = $A029 
+nojoy1 = $9FE1 
+nop2 = $A3E4 
+nos1fire = $A1EC 
+nos2fire = $A20A 
+nos3fire = $A228 
+nos4fire = $A246 
+nos5fire = $A264 
+nosound = $ABB8 
+nosoundg = $9BA8 
+nothit1 = $A2F4 
+nothit2 = $A312 
+nothit3 = $A330 
+nothit4 = $A34E 
+nothit5 = $A36C 
+nothit6 = $A38D 
+notout = $A04B 
+notsau1fire = $A1B2 
+notsau2fire = $A1B9 
+notsau3fire = $A1C0 
+notsau4fire = $A1C7 
+notsau5fire = $A1CE 
+notspawnbullet = $A19F 
+ntsctimer = $AD94 
+objpos = $A802 
+okaytoblowup = $9EA8 
+overlap1 = $A6DC 
+overlap2 = $A70E 
+pal = $ACE2 
+pexplodedelay = $A7E8 
+pexplodeinstr = $A839 
+pexplodepointer = $A7E9 
+pickfiring = $A1A5 
+player = $A7C5 
+playercoll = $A36D 
+playercontrol = $9E93 
+playerdead = $A7EA 
+pullback = $AD6A 
+pushfwd = $AD83 
+randomizer = $A656 
+randpointer = $A7F6 
+randyinstr = $A8D1 
+randyinstrend = $A902 
+rasloop = $ACA1 
+rastertable = $ADD0 
+rastertableend = $AE29 
+readposenemy1 = $A6AB 
+readposenemy2 = $A6DD 
+readposenemy3 = $A70F 
+readposenemy4 = $A741 
+readposenemy5 = $A773 
+rescnclrbullet = $A076 
+rescnclrbullf = $A1A0 
+rescnclrrp = $A677 
+resetlevelcounter = $A61D 
+resetntsc = $ACE6 
+restorescorepanel = $9CC9 
+right = $9F7F 
+rightok = $9F92 
+routines = $A7A1 
+rt = $A7C0 
+sau1fire = $A1CF 
+sau2fire = $A1ED 
+sau3fire = $A20B 
+sau4fire = $A229 
+sau5fire = $A247 
+saucer1 = $A7C8 
+saucer1frame = $A849 
+saucer2 = $A7C9 
+saucer2frame = $A84D 
+saucer3 = $A7CA 
+saucer3frame = $A851 
+saucer4 = $A7CB 
+saucer4frame = $A855 
+saucerhistore = $A7F3 
+saucerlostore = $A7F2 
+saucerpudef = $A7F0 
+saucerpudefhi = $A869 
+saucerpudeflo = $A865 
+saucerpudefmax = $A7F1 
+saucerpudefok = $A68C 
+saucerpudefpointer = $A7F8 
+scnclrsp = $9D04 
+score = $A907 
+score100 = $A4EE 
+score200 = $A4EB 
+score300 = $A4E8 
+score500 = $A4E2 
+scorecalc = $A625 
+scoreinstr = $A903 
+scoreinstrend = $A907 
+scoreok = $A639 
+scorezone = $A7F9 
+scrolloop = $ACFB 
+scrolltext = $B212 
+setcharflash = $AD68 
+setuplevelspeedtable = $9C7B 
+setupnewlevel = $9C79 
+shiphit = $A394 
+shotcount = $A7FA 
+shotintensity = $A7D0 
+skipkamikaze = $A11A 
+skipkamikaze2 = $A114 
+starfield = $9D8F 
+startpos = $A812 
+startspeed = $A822 
+stopbonus = $A5CC 
+storechar = $AD1A 
+storenextenemy1 = $A6B6 
+storenextenemy2 = $A6E8 
+storenextenemy3 = $A71A 
+storenextenemy4 = $A74C 
+system = $AD93 
+takeammoandgivepoints = $A599 
+tcoldelay = $AD97 
+tcoldelok = $AD31 
+tcolpointer = $AD96 
+testbombsfx = $A265 
+testcollision = $A281 
+testenemies = $A087 
+testenemyfire = $A172 
+testexit = $A13B 
+testkamikaze = $A0F1 
+TGT_C64 = $9B8B 
+tirq = $AC71 
+tirq2 = $AC99 
+titlecolourtable1 = $AD98 
+titlecolourtable2 = $ADA0 
+titlecolourtable3 = $ADA8 
+titlecolourtable4 = $ADB0 
+titlecolourtable5 = $ADB8 
+titleloop = $AC3C 
+titlescreenmap = $AE2A 
+waitnext = $A5F6 
+xpos = $AD95 
+zeroscor = $9C15 
+zeroy = $9D58 
+
+******* 50 Unused label(s) *******
+colinstrend
+colour1
+colour2
+colour3
+colour4
+colour5
+ddddd
+endscreentext
+enemy2anim
+enemybulletallowed
+explosion
+fireintensityend
+firespeedtableend
+frame1
+frame2
+frame3
+frame4
+frame5
+gotextend
+lctextend
+left
+level1speedtable
+level1speedtableend
+level2speedtable
+level2speedtableend
+level3speedtable
+level3speedtableend
+level4speedtable
+level4speedtableend
+level5speedtable
+level5speedtableend
+level6speedtable
+level6speedtableend
+level7speedtable
+level7speedtableend
+level8speedtable
+level8speedtableend
+levelspeedinstrend
+levelspeedlowtableend
+levelspeedtablehiend
+mkdat
+overlap1
+overlap2
+randyinstrend
+rastertableend
+saucerpudef
+scoreinstr
+scoreinstrend
+shotintensity
+TGT_C64
+
+******* 26 Variable(s) *******
+bombrangebottom  = $00FA
+bombrangeleft  = $000C
+bombrangeright  = $00A4
+bombrangetop  = $0036
+col  = $D800
+dat  = $3000
+dat2  = $3400
+gocol  = $D8D6
+gopos  = $04D6
+hiscorepos  = $0422
+lazerleft  = $3B60
+lazerright  = $3B68
+lccol  = $D8D5
+lcpos  = $04D5
+levpos  = $041C
+livespos  = $0415
+maxshots  = $0032
+missilepos  = $07D4
+musicinit  = $9000
+musicplay  = $9006
+scn  = $0400
+scorepos  = $0407
+sfxinit  = $1000
+sfxplay  = $1003
+starchar  = $3FE0
+tgt_c64  = $0001
+******* 14 Unused variables(s) *******
+col
+dat
+dat2
+gocol
+gopos
+hiscorepos
+lazerleft
+lazerright
+lccol
+lcpos
+scn
+scorepos
+starchar
+tgt_c64
+

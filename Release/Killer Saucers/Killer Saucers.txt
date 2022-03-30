@@ -1,0 +1,40 @@
+KILLER SAUCERS
+
+Loading:
+
+DISK: Insert disk into your disk drive and type LOAD "*",8 then type in RUN
+
+TAPE: Rewind tape to start. Press SHIFT and RUN/STOP, press PLAY and wait for your program to load and run. 
+
+INSTRUCTIONS:
+
+This game requires a joystick plugged into port 2.
+
+Breaking news alert:
+
+Cyber City is under attack by incoming alien killer saucers. We have called you in to try and put an end to this battle. Your mission is to blast away the incoming alien killer saucers. Be very careful as the aliens will be dropping bombs. Also they will attempt to kamikaze towards your ground vehicle. 
+
+In order to complete a level. Your task is to simply shoot 50 aliens, while avoiding running out of rockets. If lose all of your rockets or you get hit by an alien killer saucer or their own bombs. You will lose a life. You will get no extra lives in this game. Once all three lives are lost, the game is over.  Every time you lose a life – you will have to start the current level all over again. 
+
+For every level completed you will gain bonus points per every rocket that remains on your rocket indicator. That is possible to rank up your score even more if you don't waste too many rockets which are in your posession.
+
+Can you complete all 8 levels of Killer Saucers and save Cyber City from alien invasion? 
+
+Good luck.
+
+CREDITS:
+
+Code, graphics sound effects and music:
+RICHARD BAYLISS
+
+Tape loader:
+CF LOADER MAKER by JASON FINCH
+
+Copyright (C)2020 The New Dimension. All rights reserved.
+
+This program is public domain software. This means that you are allowed to copy, modify and distribute this production for free. However, you are not allowed to sell this production without permission from TND GAMES. 
+
+Visit out website at the following addresses:
+https://richard-tnd.itch.io
+http://tnd64.unikat.sk
+
