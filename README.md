@@ -11,3 +11,6 @@ Killer Saucers is a hi-score attack shoot 'em up which contains a few levels. Yo
 * Exomizer V2 (or higher)
 * VICE C64 emulator (for testing).
 
+(C) 2020 The New Dimension
+
+http://tnd64.unikat.sk
